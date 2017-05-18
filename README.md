@@ -1,5 +1,5 @@
 Instructions
-------------
+============
 
 This repository contains the assignment instructions. Submitted
 solutions will use a **separate** repository.
@@ -17,27 +17,27 @@ This assignment will require the following R packages:
     library("AER")
 
 Problem 1
----------
+=========
 
 Bailey (2016) Ex 9.1
 
 Problem 2
----------
+=========
 
 Bailey (2016) Ex 9.2
 
 Problem 3
----------
+=========
 
 Bailey (2016) Ex 9.4
 
 Problem 4
----------
+=========
 
 Bailey (2016) Ex 9.5
 
 References
-----------
+==========
 
 Bailey, Michael A. 2016. *Real Stats: Using Econometrics for Political
 Science and Public Policy*. Oxford University Press.

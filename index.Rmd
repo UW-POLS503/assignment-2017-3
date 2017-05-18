@@ -17,7 +17,7 @@ knitr::opts_chunk$set(cache = TRUE, autodep = TRUE)
 ```
 
 
-## Instructions {-}
+# Instructions {-}
 
 This repository contains the assignment instructions.
 Submitted solutions will use a **separate** repository.
@@ -31,20 +31,20 @@ This assignment will require the following R packages:
 library("AER")
 ```
 
-## Problem 1
+# Problem 1
 
 @Bailey2016a Ex 9.1
 
-## Problem 2
+# Problem 2
 
 @Bailey2016a Ex 9.2
 
-## Problem 3
+# Problem 3
 
 @Bailey2016a Ex 9.4
 
-## Problem 4
+# Problem 4
 
 @Bailey2016a Ex 9.5
 
-## References {-}
+# References {-}
