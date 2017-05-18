@@ -1,0 +1,50 @@
+---
+title: 'STAT/CSSS 503: Assignment 3'
+author: Jeffrey Arnold
+date: "May 17, 2017"
+bibliography: assignment3.bib
+output:
+  html_document:
+    toc: false
+    number_sections: true
+  pdf_document:
+    toc: false
+    number_sections: true    
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, autodep = TRUE)
+```
+
+
+## Instructions {-}
+
+This repository contains the assignment instructions.
+Submitted solutions will use a **separate** repository.
+
+1. Fork [UW-CSSS-503/assignment-2017-3-submissions](https://github.com/UW-CSSS-503/assignment-2017-3-submissions) repository to your account.
+2. Edit the file `assignment-3-solutions.Rmd` with your solutions to the problems.
+3. Submit a pull request to have it graded. Include either or both a HTML and PDF file.
+
+This assignment will require the following R packages:
+```{r, message=FALSE}
+library("AER")
+```
+
+## Problem 1
+
+@Bailey2016a Ex 9.1
+
+## Problem 2
+
+@Bailey2016a Ex 9.2
+
+## Problem 3
+
+@Bailey2016a Ex 9.4
+
+## Problem 4
+
+@Bailey2016a Ex 9.5
+
+## References {-}
