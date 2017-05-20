@@ -1,6 +1,6 @@
 ---
 title: 'STAT/CSSS 503: Assignment 3'
-author: Jeffrey Arnold
+author: Everett Mumford
 date: "May 17, 2017"
 bibliography: assignment3.bib
 output:
@@ -12,32 +12,76 @@ output:
     number_sections: true    
 ---
 
+
+# Questions
+1. In part 1E and other questions, the coefficient on the independent variable is greater than 1. What does this mean in the context of a linear probability model? Is this just an artifact of using an imperfect method?
+2. I don't understand what 1g is asking. Specifically, what does "include the residuals from the first stage" mean? I've saved the residuals from the first stage, but don't understand how they're supposed to be used in the second stage.
+3. 
+
 ```{r include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, autodep = TRUE)
 ```
 
 
-# Instructions {-}
-
-This repository contains the assignment instructions.
-Submitted solutions will use a **separate** repository.
-
-1. Fork [UW-CSSS-503/assignment-2017-3-submissions](https://github.com/UW-CSSS-503/assignment-2017-3-submissions) repository to your account.
-2. Edit the file `assignment-3-solutions.Rmd` with your solutions to the problems.
-3. Submit a pull request to have it graded. Include either or both a HTML and PDF file.
-
-This assignment will require the following R packages:
 ```{r, message=FALSE}
 library("AER")
 ```
 
 # Problem 1
+```{r}
+data <- read.csv("Ch09.Ex1.CivilWarRainInstrumentData/RainIV.csv")
+```
 
-@Bailey2016a Ex 9.1
+## Problem 1A
+```{r}
+OneA <- lm(InternalConflict~LaggedGDPGrowth, data=data)
+summary(OneA)
+```
+The coefficient on LaggedGDPGrowth denotes the change in the probability of internal conflict for each one unit increase in LaggedGDPGrowth (since InternalConflict ~ LaggedGDPGrowth is a linear probability model). Therefore, for each one unit increase in LaggedGDPGrowth, there is a .08 decrease in the probability of civil war.
+
+## Problem 1B
+```{r}
+OneB <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data=data)
+summary(OneB)
+```
+The results do not establish causation. As someone mentioned in class, the coefficient on LaggedGDPGrowth is not significant and the standard error is more than twice as large as the estimated coefficient. Furthermore, there are many other omitted variables (e.g. presence of famine) that are not included in the equation.
+
+## Problem 1c
+The two conditions required for a good instrument are the inclusion and exclustion criteria. In this case, the inclusion criteria necessitates that LaggedRainfallGrowth be correlated with LaggedGDP. We can test for this by regressing LaggedGDPGrowth on LaggedRainfall and all of our other covariates and determining if the coefficient on LaggedRainfall is statistically significant. The coefficient on LaggedRainfallGrowth is statistically significant, so LaggedRainfall satisfies the inclusion criteria. The t value is greater than 3, so we can even argue that LaggedRainfallGrowth is a strong instrument.
+```{r}
+OneC <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data=data)
+summary(OneC)
+```
+The exclusion criteria stipulates that the instrument not be correlated with the dependent variable, except through it's relationship with the independent variable. There is no statistical test to determine if the exclusion criteria is satisfied. Therefore, we need to conceptually decide if the exclusion is met. As was someone mentioned in class, rainfall is associated with food scarcity. Food scarcity is often a harbinger of conflict. Therefore, I would argue that rainfall does not satisfy the exclusion criteria and is therefore not a suitable instrumental variable. 
+
+## Problem 1D
+If both the internal and external criteria are met, then instrumental variable analysis can generate exogenous variation in LaggedGDPGrowth and determine how that exogenous variation affects the probability of internal confict. The first stage regression produces estimates of LaggedGDPGrowth that vary only with changes in the instrument or control variables. Therefore, these estimated X values are not correlated with the error term in the second-stage regression (thus creating exogenous variation in X). As long as the instrument is not correlated with the dependent variable (and assuming that no other omitted variable bias is present in our second stage regresison), we can causally estimate the effect of LaggedGDPGrowth by regressing internal conflict on the estimated values of LaggedGDPGrowth.
+
+## Problem 1E
+```{r}
+OneE <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac | LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data=data)
+summary(OneE)
+```
+
+## Problem 1f
+```{r}
+OneF <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name | LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
+summary(OneF)
+```
+By including country fixed effects, we're effectively comparing the effect of LaggedGDPGrowth on the probability of internal conflict within each country. NEED TO ADD MORE ON COEFFICIENTS HERE
+
+## Problem 1g
+```{r}
+OneG <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
+residuals(OneG)
+residuals <- residuals(OneG)
+OLS <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name)
+OLS <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
+```
 
 # Problem 2
+## Problem 2a
 
-@Bailey2016a Ex 9.2
 
 # Problem 3
 
