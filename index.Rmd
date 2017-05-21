@@ -16,7 +16,7 @@ output:
 # Questions
 1. In part 1E and other questions, the coefficient on the independent variable is greater than 1. What does this mean in the context of a linear probability model? Is this just an artifact of using an imperfect method?
 2. I don't understand what 1g is asking. Specifically, what does "include the residuals from the first stage" mean? I've saved the residuals from the first stage, but don't understand how they're supposed to be used in the second stage.
-3. 
+3. Look up interpretation of coefficients in a logistic regression 
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, autodep = TRUE)
@@ -73,17 +73,63 @@ By including country fixed effects, we're effectively comparing the effect of La
 ## Problem 1g
 ```{r}
 OneG <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
-residuals(OneG)
 residuals <- residuals(OneG)
 OLS <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name)
 OLS <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
 ```
 
 # Problem 2
-## Problem 2a
+```{r}
+tv.data <- read.csv("Ch09.Ex2.TelevisionExperimentData/news_study_MAB.csv")
+```
 
+## Problem 2a
+```{r}
+TwoA <- lm(InformationLevel~WatchProgram, data=tv.data)
+summary(TwoA)
+```
+COMMENT ON THE COEFFICIENTS. The results could certainly be biased by omitted variables. For instance, control variables included in part 2a are certainly leading to omitted variable bias in the bivariate OLS. 
+
+## Problem 2b
+```{r}
+TwoB <- lm(InformationLevel~WatchProgram + PoliticalInterest + ReadNews + Education, data=tv.data)
+summary(TwoB)
+```
+The estimated coefficient is lower in the second regression, as is the standard error. Both coefficients are statistically significant. I would argue that we have not defeated endogeneity. There are plenty of other omitted variables that could be biasing the results (e.g. variables that may determine someone's a priori opinion on affirmative action). Therefore, I would argue that the equation does not estimate an exogenous effect of X on Y.
+
+## Problem 2c
+The assignment variable will be a good instrument if it satisfies the inclusion and exclusion criteria. The inclusion criteria in this case stipulates that the treatment is correlated with the level of information that someone has on the topic. We can test this quite easily be regressing WatchProgram on TreatmentGroup and determining if the coefficient is statistically significant. The coefficient is statistically significant and is well above 3, thus we have a very strong instrument.
+```{r}
+tv.data$TreatmentGroup <- as.character(tv.data$TreatmentGroup)
+tv.data$TreatmentGroup[tv.data$TreatmentGroup != "0"] <- "1"
+tv.data$TreatmentGroup <- as.factor(tv.data$TreatmentGroup)
+tv.data$WatchProgram <- as.numeric(tv.data$WatchProgram)
+TwoC <- lm(WatchProgram ~ TreatmentGroup + PoliticalInterest + ReadNews + Education, data=tv.data)
+summary(TwoC)
+```
+
+There is no test for the exclusion criteria. We need to determine if TreatmentGroup is correlated with InformationLevel, outside of through WatchProgram. Conceptually, it seems reasonable to argue that the exclusion criteria is satisfied.
+
+## Problem 2d
+```{r}
+TwoD <- ivreg(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education | TreatmentGroup + PoliticalInterest + ReadNews + Education, data=tv.data)
+summary(TwoD)
+nrow(model.frame(TwoD))
+```
+
+```{r}
+summary(TwoB)
+nrow(model.frame(TwoB))
+```
+The coefficients are quite similar in the two regressions. The standard error is quite a bit higher in 2d, and thus the coefficient on WatchProgramYes is statistically significant at the alpha=.1 level. The sample sizes and degrees of freedom in each regression are the same (498 and 472, respectively).
+
+## 2e
+I am more confident in the results of the 2SLS model than the regression run in 2B. Both the exclusion and inclusion criteria appear to be met. The results of the 2SLS model appear suggest a smaller effect that is statistically insignificant. NEED MORE ON THE COEFFICIENTS.
 
 # Problem 3
+```{r}
+
+```
 
 @Bailey2016a Ex 9.4
 
