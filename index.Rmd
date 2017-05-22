@@ -22,6 +22,9 @@ output:
 
 4. Ensure the logic for the F-test in 4c is being correctly applied. Ensure that the F-test being significant ensures that at least one of the coefficients is not 0. Ensure that we should be testing that at least one of the variables is significant, and not that all of the variables are significant.
 
+5. In problems 5A and 5B, the intercept is totally non-sensical. How can the intercept be greater than 1 or less than 1 if its not possible for the freedom house score to be gt 1 or lt 0?
+
+
 ```{r include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, autodep = TRUE)
 ```
@@ -165,8 +168,41 @@ The standard error is larger in the 2SLS regression than in the OLS regression. 
 
 
 # Problem 5
-
+```{r}
+econ_data <- read.csv("Ch09.Ex5.GrowthDemocracyData/democracy_income.csv")
+```
 
 ## Problem 5a
+```{r}
+FiveA <- lm(democracy_fh ~ lag(log_gdp), data=econ_data)
+summary(FiveA)
+```
+The results indicate that a one percent increase in last year's GDP leads a .21 higher score on the freedom house measure.
+
+There are several concerns. For instance, there are many omitted variables that are not included on the right side of the equation (e.g. a measure of current conflict in each country). Furthermore, it's not clear to me whether a one year lag on GDP is appropriate. I'm not sure if the lag should be longer or if there should be any lag at all. As was mentioned in the question, there may be some reverse causality, leading to plenty of endogeneity in the simplified bivariate OLS above. In addition, the model intercept (-1.22) is non-sensical, since the freedom house index ranges from 0 to 1.
+
+
+## Problem 5b
+```{r}
+FiveB <- lm(democracy_fh ~ lag(log_gdp) + year + CountryCode, data=econ_data)
+summary(FiveB)
+```
+The coeffiient on lagged,logged GDP is very similar in the fixed-effects model (.22) as it was in the bivariate OLS (.21). The intercept changes quite a bit; it was -1.22 in the bivariate OLS and is 3.6 in the fixed effects model.
+
+## Problem 5c
+The inclusion criteria stipulates that world income be correlated with logged GDP for a given country. We can test whether the inclusion criteria is satisfied statistically. Since the coefficient on worldincome is statistically significant when we regress log_gdp on worldincome, we can say that the inclusion criteria is satisfied. Since the t-statistic is greater than 3, we can say that worldincome is a strong instrument. 
+```{r}
+FiveC <- lm(log_gdp ~ worldincome + year + CountryCode, data=econ_data)
+summary(FiveC)
+```
+The exclusion criteria stipulates that world income not be correlated with democracy, except through a country's GDP. There is no statistical test to determine whether the exclusion criteria is satisfied. I would argue that the exclusion criteria is not satisfied, however. Conceptually, it seems entirely probable to me that the income of trading partner countries is correlated with violence in trading partner countries. That violence can affect a country's freedom house score in many ways. For instance, perhaps violence in a neighboring country will cause a mass exodus of people from the country experiencing violence into that country's trading partners. An inflow of refugess can change the political climate in a country markedly.
+
+
+## Problem 5d
+```{r}
+FiveD <- ivreg(democracy_fh ~ lag(log_gdp) + year + CountryCode | lag(worldincome) + year + CountryCode, data=econ_data)
+summary(FiveD)
+```
+The coefficient is quite similar in the 2SLS, OLS, and fixed effects models (.19, .21, and .22 respectively). The standard errors are quite a bit smaller in the fixed effects model (.008) and OLS model (.008) than in the 2SLS model (.04), as is to be expected.
 
 # References {-}
