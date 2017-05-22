@@ -179,7 +179,7 @@ summary(FiveA)
 ```
 The results indicate that a one percent increase in last year's GDP leads a .21 higher score on the freedom house measure.
 
-There are several concerns. For instance, there are many omitted variables that are not included on the right side of the equation (e.g. a measure of current conflict in each country). Furthermore, it's not clear to me whether a one year lag on GDP is appropriate. I'm not sure if the lag should be longer or if there should be any lag at all. As was mentioned in the question, there may be some reverse causality, leading to plenty of endogeneity in the simplified bivariate OLS above. In addition, the model intercept (-1.22) is non-sensical, since the freedom house index ranges from 0 to 1.
+There are several concerns. For instance, there are many omitted variables on the right side of the equation (e.g. a measure of current conflict in each country). Furthermore, it's not clear to me whether a one year lag on GDP is appropriate. I'm not sure if the lag should be longer or if there should be any lag at all. As was mentioned in the question, there may be some reverse causality, leading to plenty of endogeneity in the simplified bivariate OLS above. In addition, the model intercept (-1.22) is non-sensical, since the freedom house index ranges from 0 to 1.
 
 
 ## Problem 5b
@@ -188,6 +188,7 @@ FiveB <- lm(democracy_fh ~ lag(log_gdp) + year + CountryCode, data=econ_data)
 summary(FiveB)
 ```
 The coeffiient on lagged,logged GDP is very similar in the fixed-effects model (.22) as it was in the bivariate OLS (.21). The intercept changes quite a bit; it was -1.22 in the bivariate OLS and is 3.6 in the fixed effects model.
+
 
 ## Problem 5c
 The inclusion criteria stipulates that world income be correlated with logged GDP for a given country. We can test whether the inclusion criteria is satisfied statistically. Since the coefficient on worldincome is statistically significant when we regress log_gdp on worldincome, we can say that the inclusion criteria is satisfied. Since the t-statistic is greater than 3, we can say that worldincome is a strong instrument. 
@@ -203,6 +204,6 @@ The exclusion criteria stipulates that world income not be correlated with democ
 FiveD <- ivreg(democracy_fh ~ lag(log_gdp) + year + CountryCode | lag(worldincome) + year + CountryCode, data=econ_data)
 summary(FiveD)
 ```
-The coefficient is quite similar in the 2SLS, OLS, and fixed effects models (.19, .21, and .22 respectively). The standard errors are quite a bit smaller in the fixed effects model (.008) and OLS model (.008) than in the 2SLS model (.04), as is to be expected.
+The coefficient is quite similar in the 2SLS, OLS, and fixed effects models (.19, .21, and .22, respectively). The standard errors are quite a bit smaller in the fixed effects model (.008) and OLS model (.008) than in the 2SLS model (.04), as is to be expected.
 
 # References {-}
