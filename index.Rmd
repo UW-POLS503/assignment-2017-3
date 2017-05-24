@@ -14,10 +14,6 @@ output:
 
 
 # Questions
-1. In part 1E and other questions, the coefficient on the independent variable is greater than 1. What does this mean in the context of a linear probability model? Is this just an artifact of using an imperfect method?
-
-3. Look up interpretation of coefficients in a logistic regression
-
 4. Ensure the logic for the F-test in 4c is being correctly applied. Ensure that the F-test being significant ensures that at least one of the coefficients is not 0. Ensure that we should be testing that at least one of the variables is significant, and not that all of the variables are significant.
 
 5. In problems 5A and 5B, the intercept is totally non-sensical. How can the intercept be greater than 1 or less than 1 if its not possible for the freedom house score to be gt 1 or lt 0?
@@ -100,10 +96,10 @@ tv.data <- read.csv("Ch09.Ex2.TelevisionExperimentData/news_study_MAB.csv")
 
 ## Problem 2a
 ```{r}
-TwoA <- lm(InformationLevel~WatchProgram, data=tv.data)
+TwoA <- lm(InformationLevel ~ WatchProgram, data=tv.data)
 summary(TwoA)
 ```
-COMMENT ON THE COEFFICIENTS. The results could certainly be biased by omitted variables. For instance, control variables included in part 2a are certainly leading to omitted variable bias in the bivariate OLS. 
+The coefficient on WatchProgramYes denotes a .3 increase in the mean of InformationLevel for those that watched the program versus those that did not. The results could certainly be biased by omitted variables. For instance, control variables included in part 2a are certainly leading to omitted variable bias in the bivariate OLS. 
 
 ## Problem 2b
 ```{r}
@@ -117,6 +113,9 @@ The assignment variable will be a good instrument if it satisfies the inclusion 
 ```{r}
 tv.data$TreatmentGroup <- as.character(tv.data$TreatmentGroup)
 tv.data$TreatmentGroup[tv.data$TreatmentGroup != "0"] <- "1"
+
+# Referenced this StackOverflow post while writing line of code above -- "Replace a Value in a Data Frame Based on a Conditional (`if`) Statement in R." StackOverflow. Stack Exchange, n.d. Web. 23 May 2017. <https://stackoverflow.com/questions/5824173/replace-a-value-in-a-data-frame-based-on-a-conditional-if-statement-in-r>. question posted on 4/28/11. referenced the accepted answer posted on 4/28/11.
+
 tv.data$TreatmentGroup <- as.factor(tv.data$TreatmentGroup)
 tv.data$WatchProgram <- as.numeric(tv.data$WatchProgram)
 TwoC <- lm(WatchProgram ~ TreatmentGroup + PoliticalInterest + ReadNews + Education, data=tv.data)
@@ -136,14 +135,15 @@ nrow(model.frame(TwoD))
 summary(TwoB)
 nrow(model.frame(TwoB))
 ```
-The coefficients are quite similar in the two regressions. The standard error is quite a bit higher in 2d, and thus the coefficient on WatchProgramYes is statistically significant at the alpha=.1 level. The sample sizes and degrees of freedom in each regression are the same (498 and 472, respectively).
+The coefficients are quite similar in the two regressions. The standard error is quite a bit higher in 2d, and thus the coefficient on WatchProgramYes is statistically significant at the alpha=.1 level in 2B but not 2D. The sample sizes and degrees of freedom in each regression are the same (498 and 472, respectively).
 
 ## Problem 2e
-I am more confident in the results of the 2SLS model than the regression run in 2B. Both the exclusion and inclusion criteria appear to be met. The results of the 2SLS model appear suggest a smaller effect that is statistically insignificant. NEED MORE ON THE COEFFICIENTS.
+I am more confident in the results of the 2SLS model than the regression run in 2B. Both the exclusion and inclusion criteria appear to be met. I am more confident in the 2SLS model because of all of the endogeneity in the OLS model.
+
 
 # Problem 4
 ```{r}
-inmates.data <- read.csv("Ch09.Ex4.EducationCrimeData/inmates.csv")
+inmates.data<- read.csv("Ch09.Ex4.EducationCrimeData/inmates.csv")
 ```
 
 ## Problem 4a
@@ -157,7 +157,7 @@ Since we're estimating a linear probability model, the coefficient denotes how t
 We cannot conclude that increasing education will decrease crime rates based on this model alone. For starters, there are several omitted variables that are not included in the equation that are leading to endogeneity (e.g. household income). In addition, there may be some reverse causality, thus making it difficuly to use a simple OLS equation to determine causality.
 
 ## Problem 4c
-The inclusion criteria stipulates that the instruments have a significant effect on education. We can use an F-test to determine if all of the variables satisfy the inclusion criteria. The null hypothesis of the F test is that the coefficient on each instrument is zero. Therefore, we'll reject the null if any coefficient is statistically significant (that is, if any instrumental variable satisfies the inclusion critera). Since the F-statistic is statistically significant, the inclusion criteria is satisfied (at least one of the package of instrumental variables is significantly correlated with education).
+The inclusion criteria stipulates that the instruments have a significant effect on education. We can use an F-test to determine if all of the variables satisfy the inclusion criteria. The null hypothesis of the F test is that the coefficient on each instrument is zero. Therefore, we'll reject the null if any coefficient is statistically significant (that is, if any instrumental variable satisfies the inclusion critera). Since the F-statistic is statistically significant and greater than 10, the inclusion criteria is satisfied (at least one of the package of instrumental variables is significantly correlated with education). 
 ```{r}
 unrestricted_stage1 <- lm(educ ~ age + AfAm + state + year + ca9 + ca10 + ca11, data=inmates.data)
 restricted_stage1 <- lm(educ ~ age + AfAm + state + year, data=inmates.data)
@@ -216,3 +216,4 @@ summary(FiveD)
 The coefficient is quite similar in the 2SLS, OLS, and fixed effects models (.19, .21, and .22, respectively). The standard errors are quite a bit smaller in the fixed effects model (.008) and OLS model (.008) than in the 2SLS model (.04), as is to be expected.
 
 # References {-}
+"Replace a Value in a Data Frame Based on a Conditional (`if`) Statement in R." StackOverflow. Stack Exchange, n.d. Web. 23 May 2017. <https://stackoverflow.com/questions/5824173/replace-a-value-in-a-data-frame-based-on-a-conditional-if-statement-in-r>. question posted on 4/28/11. referenced the accepted answer posted on 4/28/11.
