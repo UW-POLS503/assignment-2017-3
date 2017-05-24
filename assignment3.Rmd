@@ -1,0 +1,262 @@
+---
+title: "Assignment three"
+author: "Christianna Parr"
+date: "May 19, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 9: Instrumental Variables. Assignment Three: Q 1, 2, 4, and 5. 
+
+```{r}
+library (tidyverse)
+library (broom)
+library(rio)
+library (modelr)
+library (AER)
+library (car)
+library (plm)
+rain <- read_csv ("RainIV.csv")
+
+```
+
+###1 a)
+```{r}
+# 1. a. Estimate a bivariate OLS model with internal conflict and GDP.
+
+ols <- tidy(lm (InternalConflict ~ LaggedGDPGrowth, data = rain))
+ols
+
+```
+When we run a bivariate OLS model we find no significant results (at the alpha equals 0.05) to suggest that growth in GDP would reduce conflict. 
+
+###b)
+
+```{r}
+# b. with controls
+
+olscontrol <- tidy(lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = rain))
+olscontrol
+
+```
+These results also do not establish a causal relationship between economic growth and reduction in civil conflict (the p values are not significant at the 0.05 level).
+
+###c)
+```{r}
+
+#c. Instrumental variable test for rainfall
+
+ols2 <- tidy(lm (LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = rain)) 
+
+ols2
+
+```
+
+The two conditions for a good instrument:
+1. Inclusion condition: the instrument must explain X.
+2. Exclusion condition: the instrument must explain x without explaining y.
+
+We can only test for the first condition using a linear regression, like done in part c.
+Here we find the instrument explains x at an alpha of 0.05. But we cannot explain the exclusion condition. 
+The only way to do this is through theory and justification. Rainfall can explain GDP growth but not conflict according to the authors of the study. 
+
+###d.Why use rainfall as an instrument?
+
+If we use rainfall as an instrument for GDP growth we can make a connection between the two, since rainfall would definitely effect agrarian societies. Larger amounts would signal more harvest and better export. However, rainfall would be a hard factor in thinking about conflict, other authors (Acemoglu and Robinson) do mention possible flooding of roads as a factor but dismiss this in their paper as unlikely. Therefore, rainfall can explain conflict but only through economic growth. 
+
+###e)
+```{r}
+# e. Real Instrument test with ivreg
+
+instrument <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac | LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = rain)
+
+summary (instrument)
+
+```
+
+From this 2SLS we can see that there is not a significant result (at the alpha equals 0.05 level) for GDP growth even with the instrumental variable. We cannot reject the null hypothesis. 
+
+###f)
+```{r}
+#f. Dummy variables
+
+reg3 <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + 
+                EthnicFrac + ReligiousFrac + factor(country_name) | LaggedRainfallGrowth + InitialGDP + 
+                Democracy + Mountains + EthnicFrac + ReligiousFrac + factor(country_name), data = rain)
+
+summary (reg3)
+
+```
+
+In this 2SLS regression with dummy variables we find an effect at the 0.1 confidence level, but not at 0.05. Including the country fixed effects decreases the p value of the GDP growth (0.26 to 0.06). This shows us that when we control for confounders through dummies we can improve the certainty of our statistic. 
+
+###G)
+```{r}
+# g) funky
+
+firststage <- ivreg (InternalConflict ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac +
+                       ReligiousFrac + country_name, data = rain)
+
+rstage <- resid(firststage) #saving residuals 
+
+tidy(lm (InternalConflict ~ LaggedGDPGrowth + InitialGDP +Democracy + Mountains +EthnicFrac + ReligiousFrac +
+      country_name + rstage, data = rain))
+
+```
+
+Here we can see the coefficient is much lower than the previous 2SLS regression (from -2.8 to -0.045) but it is now significant at the alpha equals 0.05 level. Endogeneity is addressed in this calculation by using the first stage in the two stage regression, removing the chance of corelation with the error term. 
+
+## Question 2:
+
+```{r}
+tv <- import ("news_study_MAB.dta")
+```
+
+### a) Bivariate OLS
+
+```{r}
+reg1 <- tidy(lm (InformationLevel ~ WatchProgram, data = tv))
+
+reg1
+
+```
+
+The results can be biased because there may be a selection problem, those who were likely to watch the tv program might have had previous higher levels of information. There could be a problem with causality in this situation. 
+
+### b) With controls
+
+```{r}
+reg2 <- tidy(lm (InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education, data = tv))
+
+reg2
+
+```
+
+The results do not appear to be as different from each other. The coefficients are relatively the same, only reducing slightly in the controlled regression. The estimate for watching the program is still significant. But there is a problem with endogeneity because multiple variables could be corelated with the error term. The causal direction is still uncertain. 
+
+### c) Instrument test
+
+```{r}
+reg3 <- lm (WatchProgram ~ TreatmentGroup + PoliticalInterest + ReadNews + Education, data = tv)
+
+tidy(reg3)
+
+nobs (reg3)
+
+```
+
+In this case the assignment to watch the program should be random. Using this as an instrument is useful since it does create a difference in the treatment variable (watching the program), but it does not effect the dependent variable (information levels). 
+
+We can test the instrument using an OLS regression with the treatment group and the explanatory variable, and the test confirms that it is a good instrument. 
+
+### d) 2SLS model
+
+```{r}
+ivreg_tv <- ivreg (InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education | TreatmentGroup +
+                     PoliticalInterest + ReadNews + Education, data = tv)
+
+summary(ivreg_tv)
+
+nobs (ivreg_tv)
+
+```
+
+From looking at the observations (nobs) we can see that there are 9 more observations in part c. This is because there are some missing variables from information level. Therefore, we have a different result from the first stage of the 2SLS, due to the missing variables. 
+
+e) The results of the 2SLS suggest that watching the program and information levels are not corelated at the alpha equals 0.05 level. The results are less significant than part b. We can't be certain that we have defeated endogeneity but using assignment to group as an instrument helps to reduce the endogeneity issue in this experiment. We can see the difference in the number of groups who watched the program and those who did not as the result of the assignment, therefore it is a useful IV. 
+
+Question 4: 
+```{r}
+inmates <- import ("inmates.dta")
+```
+
+A) OLS/Linear Model
+```{r}
+reg_in <- tidy (lm(prison ~ educ + age + AfAm + factor(state) + factor(year), data = inmates))
+
+reg_in
+
+```
+
+From this OLS we can see that education attainment is highly significant in whether or not an individual will go to prison. The coefficient, however, is small but when the difference is between no education and a full 12 years of education, the difference is substantive and the chances of going to prison are much more likely when one has no education (30% probability). 
+
+B) No, we cannot prove a causal relationship between education levels and crime. There can be multiple confounding factors at play which can effect the likelihood of crime. This is a difficult relationship to estimate due to the large amount of factors, such as economic conditions, family background, geography and historical discrimination. As a result these confounders could bias the regression. 
+
+C) test
+
+```{r}
+test <- lm ( educ ~ age + AfAm + state + year + ca9 +ca10 +ca11, data = inmates)
+
+linearHypothesis(test, c("ca9", "ca10", "ca11"))
+
+```
+
+Since there are multiple IVs we use an f test to discover their strength. The test demonstrates that they are strong instruments. 
+
+D) 2sls
+```{r, error = TRUE}
+ivreg_in <- ivreg (prison ~ educ + age + AfAm + factor(state) + factor(year) | ca9 + ca10 + ca11 + age +
+                     AfAm + factor (state) + factor (year), data = inmates)
+
+ivreg_in
+```
+
+I am unable to carry out this 2SLS due to the error: cannot allocate vector of size 1.5 GB, even though I have sufficient space on my computer for R to run this. Therefore, I also cannot finish part e. 
+
+Question 5: 
+```{r}
+income <- read_csv ("democracy_income.csv") 
+
+income <- income %>%
+  group_by (CountryCode) %>%
+  select (CountryCode, year, democracy_fh, log_gdp, worldincome, YearOrder)
+```
+
+a) Pooled Regression
+```{r}
+pincome <- pdata.frame(income)
+
+pincome$lag_gdp <- lag(pincome$log_gdp, k = 1)
+
+regplm <- tidy(plm(democracy_fh ~ lag_gdp, data = pincome, model = "pooling"))
+
+regplm
+  
+```
+
+From this pooled regression we can see that the lagged GDP is highly significant. But, bias still remains a concern because we cannot be certain that democracy is not influenced by other factors apart from GDP. Alternative theories point to institutional mechanisms, self expression values (Inglehart and Wetzel) or colonial history. 
+
+b)
+```{r}
+regplm2 <- tidy(plm(democracy_fh ~ lag_gdp + year + CountryCode, data = pincome, model = "pooling"))
+
+regplm2
+
+```
+
+Here we included country and year fixed effects, there still is a significant result for the lagged GDP (alpha = 0.05). But this significance has reduced once the controls are added. 
+
+c) Instrument test
+```{r}
+test1 <- tidy(plm (lag_gdp ~ worldincome, data = pincome, model = "pooling"))
+
+test1
+
+```
+
+The instrument test shows that world income is a strong instrument for log gdp. 
+1. Inclusion condition: The test determines this, that world income is corelated with log gdp at the alpha = 0.05 level.
+2. Exclusion condition: The IV should not be corelated with y, only through x. This can only be justified through theory, and here trading partner income is corelated with the GDP of a country, but should not be corelated with the level of democracy. 
+
+d)
+```{r}
+tidy (plm(democracy_fh ~ lag_gdp + year + CountryCode | lag(worldincome, k = 1) + year + CountryCode, data = pincome,
+          model = "pooling"))
+
+```
+
+With the use of world income as an instrument we find that the coefficient becomes negative. Therefore, there is a negative relationship between GDP and democracy in this model. This has the opposite outcome from the OLS model and the panel data which demonstrate a positive relationship between democracy and GDP. Also the significance of the result disappears, thus we cannot reject the null hypothesis. 
+
