@@ -13,12 +13,6 @@ output:
 ---
 
 
-# Questions
-4. Ensure the logic for the F-test in 4c is being correctly applied. Ensure that the F-test being significant ensures that at least one of the coefficients is not 0. Ensure that we should be testing that at least one of the variables is significant, and not that all of the variables are significant.
-
-5. In problems 5A and 5B, the intercept is totally non-sensical. How can the intercept be greater than 1 or less than 1 if its not possible for the freedom house score to be gt 1 or lt 0?
-
-
 ```{r include=FALSE}
 knitr::opts_chunk$set(cache = TRUE, autodep = TRUE)
 ```
