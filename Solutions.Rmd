@@ -65,14 +65,14 @@ Here, we find a an effect at the 0.10 confidence level, but not at the 0.05 leve
 
 ###(g)
 ```{r}
-frstage <- ivreg(InternalConflict ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = data)
+frstage <- ivreg(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = data)
 
 rstage <- resid(frstage)
 
 head(tidy(lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name + rstage, data = data)))
     
 ```
-The coefficient in this case is much smaller (-0.045 vs. -2.8), but it is also statistically significant at the alpha = 0.05 level.  We handle endogeneity by utilizing the first stage in this second regression, removing the possiblity of correlation with the error term.
+The coefficient is the same, but it is also statistically significant at the alpha = 0.05 level.  However, the standard errors in this estimation are not correct as we are estimating using values which are already estimated.  We handle endogeneity by utilizing the first stage in this second regression, removing the possiblity of correlation with the error term.
 
 #Question 2
 
