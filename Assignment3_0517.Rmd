@@ -1,0 +1,217 @@
+---
+title: "POLS503_Assignment3_HanjieWANG"
+author: "Hanjie WANG"
+date: "May 17, 2017"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(AER)
+```
+#### Real Stats p318 Exercise 1 
+```{r}
+rain<-read_csv("./RainIV.csv")
+```
+1.a
+```{r}
+reg_1_1<- lm (InternalConflict~LaggedGDPGrowth, data = rain)
+summary(reg_1_1)
+```
+The result suggests that on average, LaggedGDPGrowth has a negtaive effect on internal conflict, but the result is not statistically significant. 
+
+1.b 
+```{r}
+reg_1_2<- lm(InternalConflict~ LaggedGDPGrowth+ InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac, data = rain)
+summary(reg_1_2)
+```
+The results suggests that while laggedGDPGrowth has negative but not significant effects on internal conflicts, the negative effect of initial GDP on laggedGDPgrowth is significant at $\alpha$=0.01. The causal relationship means the higher the GDP at beginning of 1979, the lower the chance of internal conflicts taking place. But at the moment it is hard for us to say anything between gdp growth and internal conflict. 
+
+1.c
+Two conditions:
+Exclusion restraints: The influence of LaggedRainfallGrowth (as an instrument of laggedGDPGrowth ) on internal conflict could only be channelled through laggedGDPGrowth. It's not related with any other variable. 
+
+Inclusion restraints: We should use regression to see how LaggedRainfallGrowth correlates with laggedGDPGrowth. 
+```{r}
+reg_1_test<- lm(LaggedGDPGrowth~ LaggedRainfallGrowth+ InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac, data=rain)
+summary(reg_1_test)
+```
+The t value is 3.432> 3, and the P value is statistically significant. It suggests they are highly correlated. Inclusion restraints hold. 
+
+1.d
+In economies that largely rely on rainfed agriculture, economic growth in gross domestic product is substantially affected by rainfall. Meanwhile, rain is natural phenomenon and could be seen as randomly assigned. This allows us to solve the endogeneity problem, isolate the effects of endogenous factors, and focus exclusively on the effect of economic growth on internal conflict. But this would not work for economies with extensive irrigation systems nor are heavily industrialized.
+
+1.e
+```{r}
+ivreg_1_1<-ivreg(InternalConflict~ LaggedGDPGrowth+ InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac| LaggedRainfallGrowth + InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac, data = rain)
+summary(ivreg_1_1)
+```
+Results: LaggedGDPGrowth does not have a statistically significant effect on internal conflict, though the effect is negative and relative large (-2.063). Its standard error has increased from 0.2200999 to 1.845106, suggesting we are losing precision by adopting 2SLS method. 
+At the same time, Initial GDP has a smaller negative effect (-0.058), which is significant. 
+
+1.f
+```{r}
+ivreg_1_2<- ivreg(InternalConflict~ LaggedGDPGrowth+ InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name)| LaggedRainfallGrowth + InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name), data = rain)
+summary(ivreg_1_2)
+```
+Question: Comment on the quality of the instrument in the first stage and the results for the effects of lagged economic growth in the second stage. 
+
+For the quality of instruments, it's the same as the question above that it passes both exclusion and inclusion restraint test. 
+After adding the fixed effects of country, the estimate of laggedGDPGrowth increases in magnitude and the significance increases at the same time. It isolates the effect of GDP from the country-specific factors. 
+
+1.g 
+Here we are not only using the estimate (fitted value) of first stage, but the real value = fitted value + residual 
+```{r}
+first.stage.1<- lm(LaggedGDPGrowth~LaggedRainfallGrowth + InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name), data=rain)
+
+rain$residuals<-first.stage.1$residuals
+rain$instrument<-rain$residuals+rain$LaggedGDPGrowth
+
+reg_1_3<- lm(InternalConflict~ instrument + InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name), data = rain)
+summary(reg_1_3)
+```
+The coefficient on instrument (lagged GDP growth) here is -0.03. The one I get in 2SLS is -2.853380. I don't really understand the endogeneity issue here..  
+
+#### Realstats 9.2 
+```{r}
+news<-read_csv('./news_study_MAB.csv')
+```
+
+2.a
+```{r}
+reg_2_1<-lm(InformationLevel~WatchProgram, data=news)
+summary(reg_2_1)
+```
+If the intepretation is simply based on the OLS result, it indicates that whether the person actually watched the program or not has a statistically significant impact on the outcome variable (as of the information respondent has about Proposition 209). However, this result should be biased as the outcome variable could be correlated with unobserved factors, which should be controlled for. 
+
+2.b
+```{r}
+reg_2_2<- lm (InformationLevel~ WatchProgram+ PoliticalInterest+ ReadNews+ Education, data= news)
+summary(reg_2_2)
+```
+The result is different from the (a) as the estimate effects of WatchProgram is reduced from 0.29637 to 0.192616, the P value has increased from 0.000474 to 0.012717, hence it becomes less statistically significant. It suggests that after controlling for other variables, we are isolating the effects of the actually watching the program. 
+
+However, we have not defeated endogeneity. Since the R-sqaured is 0.225, there remains large error term which might be correlated with the action of watch program. 
+
+2.c 
+The assignment variable might be a good instrument as it offers a randomized exogenous variation of whether or not the person has watched the program, hence allowing us to isolate the effect of WatchProgram on InformationLevel. The effect of the experiment(or assignment) is exclusively channelled through the behavior of watching on the outcome variable. 
+
+We could run regression to see the correlation between outcome endogeneous variable WatchProgram and instrument TreatmentGroup to see if it satisfy the inclusion condition. 
+
+```{r}
+# I am unsure why it is the case, but I have to mannually coerced the variable to integer. Otherwise, it simply gives me error "NAs created during coercion".
+news$WatchProgram_2<-ifelse(news$WatchProgram=="yes",1,0)
+reg_2_test<- lm(WatchProgram_2~TreatmentGroup+ PoliticalInterest+ ReadNews+ Education, data=news)
+summary(reg_2_test)
+```
+t=11.8>3, so it is a good instrument in terms of both evaluation. 
+
+2.d
+```{r}
+ivreg_2<-ivreg(InformationLevel~ WatchProgram+ PoliticalInterest+ ReadNews+ Education | TreatmentGroup+ PoliticalInterest+ ReadNews+ Education, data= news)
+summary(ivreg_2)
+
+#first stage 
+first.stage.2<- lm(WatchProgram_2~TreatmentGroup+ PoliticalInterest+ ReadNews+ Education, data=news)
+summary(first.stage.2)
+
+# 5 missing data removed, so I could not extract the fitted.value directly,  got to wrangle the dataset a bit
+news<-news%>%
+  filter(is.na(ReadNews)==FALSE) %>%
+  filter (is.na(Education)==FALSE) %>%
+  filter (is.na(PoliticalInterest)==FALSE)
+
+news$instrument<-first.stage.2$fitted.values
+# second stage 
+second.stage.2<- lm (InformationLevel~instrument+ PoliticalInterest+ ReadNews+ Education, data=news)
+summary (second.stage.2)
+```
+
+Yes, they are identical, even the sample size.. I guess the answer should be they are identical except for a difference of 5 between the smaple size. But since I manually removed missing variables (there should be other more sophisticated ways I asssume) so the sample size are identical now. 
+
+2.e
+Result: It suggests that on average wathching the program has an estimate effect of 0.191861 on the information level. Yet the result is not statistically significant. Yes, we have defeated endogeneity. 
+
+#### Realstats 9.4 
+
+```{r}
+inmates<-read_csv("./inmates.csv")
+```
+
+4.a
+```{r}
+reg_4_1<-lm(prison~educ+age+AfAm+factor(state)+factor(year), data=inmates)
+summary(reg_4_1)
+```
+Results: 
+The results indicates that the main independent variable educaion on average has a negative effect on the outcome variable of prison. The estimate of the effect is -1.198e-03 so seems to be minor in magnitude. Meanwhile it's statistically significant, with a very small P value < 2e-16. 
+At the same time, the other two independent variables of age and race also negative effects (on average) on the outcome variable. The majority of the fixed effects of year and state of residents are statistically significant, with only state 2, 5, 33, 38, 44,45,50 and 54 not significant. The fixed effect of most of them are positive and only few (state 2, state 11, state 15, state 28, year 70) have negative effects.  
+
+4.b
+No, we couldn't conclude increasing education will reduce crime. 
+It's because there might be other unobserved factors(errors) correlated to education that might influence educatio. Also as we can see, the R-sqaured statistic is 0.01279, which is quite small. It suggests that the error term in this linear regression is large and part of it could be correlated with education. Put differently, there might be problem of endogeneity. 
+
+4.c
+The two conditions for good instruments are 1) exclusion restraints 2) inclusion restraint. 
+For inclusion restraint, we could use F test to assess the explanatory power. 
+```{r}
+unrestricted<- lm(educ~ca9+ca10+ca11+age+AfAm+factor(state)+factor(year), data=inmates)
+restricted<- lm(educ~age+AfAm+factor(state)+factor(year), data=inmates)
+anova(unrestricted, restricted)
+```
+Don't have enough memory to run this one...
+
+For exclusion restraint, we are arguing that the effect of the instrument (ca9,ca10,ca11) on the outcome variable (crime/prison) is only channeled through the variable of educ an the instruments are randomly assigned. This is basically valid as whether the policymaking process of the duration of compulsory education is only correlated with education, and it is more or less a random process. 
+
+4.d
+```{r}
+ivreg_4<- ivreg(prison~educ+age+AfAm+factor(state)+factor(year)|ca9+ca10+ca11+age+AfAm+factor(state)+factor(year),data=inmates)
+```
+Don't have enough memory to run this one... 
+
+4.e
+
+
+### Realstats 9.5
+```{r}
+growth_demo<-read_csv('./democracy_income.csv')
+```
+
+5.a
+```{r}
+reg_5_1<-lm(democracy_fh~lag(log_gdp), data=growth_demo)
+summary (reg_5_1)
+```
+The result suggests that log_gdp has an estimate of the lagged effect of 0.207 on the outcome variable of democracy (on average), which is also statistically significant. Put differently, it suggests that the effect of income (GDP) in year t-1 on its democracy score in year t is 0.207(relative large in magnitude)) and statistically significant. 
+
+The concern is GDP might be correlated with other unobserved factors like the fixed effect of particular years (e.g. economic crisis), particular country (i.e. country economic policy) or both. 
+
+5.b
+```{r}
+reg_5_2<-lm(democracy_fh~lag(log_gdp)+ factor(year)+ factor(CountryCode), data=growth_demo)
+summary(reg_5_2)
+```
+After including fixed effects of country and year, the average effect of lag(log_gdp) decreases from 0.2 to 0.03527 and less statistically significant (P value increases to 0.005274). Now it's only significant at $\alpha$=0.1
+This change is because we separate the effects of specific year and country, which was hidden in the error term but correlates with income, out and make the effect of income alone more precise. 
+
+5.c
+The instruments should meed two conditions - inclusion and exclusion. For inclusion, we could run regression. After running below, we find the t value is >3, so it's good in terms of inclusion restraint. 
+Q: when testing the explanatory power, should we include lag or not? 
+Q: Here do we need to include the fixed effects or not? I simply tried both and they all seem to work. 
+
+```{r}
+reg_5_test<- lm(lag(log_gdp)~ lag(worldincome)+ factor(year)+ factor(CountryCode),data=growth_demo)
+summary(reg_5_test)
+
+reg_5_test_2<- lm(log_gdp~worldincome, data=growth_demo)
+summary(reg_5_test_2)
+```
+
+For exclusion, I actually don't think this is a good instrument. Although the income of trading partners seems to be not directly relate to level of democracy, but it might relate to the level of democracy of trading partners. Although it's aggregate level, but it seems democracies might be more likely to trade with democracies, which share similar standard of labor right.. 
+
+5.d
+I am unsure if the question asks for controlling for fixed effects, but I am including them here since worldincome correlates with fixed effects of year and country.
+```{r}
+ivreg_5<-ivreg(democracy_fh~lag(log_gdp)+ factor(year)+ factor(CountryCode)|lag(worldincome)+ factor(year)+ factor(CountryCode), data=growth_demo)
+summary(ivreg_5)
+```
+The results suggest that on average, lag(log_gdp) have a negative effect (-0.09385) on the level of democracy. Neverthess, since this estimate is not statistically significant (P=0.071>0.05), we accept the null hypothesis that GDP (or income) is not correlated with the level of democracy. 
