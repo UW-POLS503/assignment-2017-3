@@ -64,9 +64,10 @@ Here we are not only using the estimate (fitted value) of first stage, but the r
 first.stage.1<- lm(LaggedGDPGrowth~LaggedRainfallGrowth + InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name), data=rain)
 
 rain$residuals<-first.stage.1$residuals
-rain$instrument<-rain$residuals+rain$LaggedGDPGrowth
+rain$fitted<-first.stage.1$fitted.value
+rain$instrument<-rain$residuals+rain$fitted
 
-reg_1_3<- lm(InternalConflict~ instrument + InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name), data = rain)
+reg_1_3<- lm(InternalConflict~ LaggedGDPGrowth + residuals+ InitialGDP + Democracy + Mountains+ EthnicFrac+ ReligiousFrac +factor (country_name), data = rain)
 summary(reg_1_3)
 ```
 The coefficient on instrument (lagged GDP growth) here is -0.03. The one I get in 2SLS is -2.853380. I don't really understand the endogeneity issue here..  
