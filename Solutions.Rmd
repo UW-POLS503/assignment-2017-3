@@ -1,0 +1,198 @@
+---
+title: "Instrumental Variables"
+author: "Jeffrey Grove"
+date: "May 17, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rio)
+library(broom)
+library(modelr)
+library(AER)
+library(car)
+library(plm)
+data <- read_csv("Data/rainIV.csv")
+```
+#Question 1
+
+###(a)
+```{r}
+reg_1 <- tidy(lm(InternalConflict ~ LaggedGDPGrowth, data = data))
+
+reg_1
+
+```
+The results of the bivariate OLS do no demonstrate significance at the alpha equals 0.05 level, thus we do not reject the null hypothesis.
+###(b)
+```{r}
+reg_2 <- tidy(lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = data))
+
+reg_2
+```
+These results do not establish a causal relationship between the economy and civil conflict, as the p value is still greater than alpha at a 0.05 level.
+###(c)
+```{r}
+itest <- tidy(lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = data))
+
+itest
+```
+The two conditions required fora  good instrument are the inclusion condition - the instrument must explain x - and the exclusion restriction - the instrument must not explain Y.  We can test for the first using a standard linear regression as done above.  We find that the instrument rainfall explains growth at the alpha equals 0.05 level.  However, the only way to justify the second condition is through theoretical explanation, we can not use a statistical test to establish its veracity.
+
+###(d)
+Instrumenting for GDP with rain could explain the causal effect as rainfall would help explain overall economic growth, especially in agrarian economies.  Yet, importantly, it is unlikely that rainfall would have a strong effect on whether conflict itself occurs, except through economic growth itself.  Acemoglu and Robinson test the hypothesis that rainfall would be correlated to the destruction of infrastructure, particularly roads, but find no particular evidence of this alternate causal path.
+
+###(e)
+```{r}
+ireg <- summary(ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac|LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = data))
+
+ireg
+
+```
+From this regression, we find that Lagged GDP Growth is still not a statistically significant explanation at the alpha equals 0.05 level, and thus do not reject the null hypothesis.
+
+
+###(f)
+```{r}
+summary(ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name|LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = data))
+
+```
+Here, we find a an effect at the 0.10 confidence level, but not at the 0.05 level.  Notably, including the state fixed effects reduces the p value of LaggedGDPGrowth from 0.26 to 0.06.  While this is still not a significant result, it does show that controlling for confounders can significantly improve our certainty of statistical results.
+
+###(g)
+```{r}
+frstage <- ivreg(InternalConflict ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = data)
+
+rstage <- resid(frstage)
+
+head(tidy(lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name + rstage, data = data)))
+    
+```
+The coefficient in this case is much smaller (-0.045 vs. -2.8), but it is also statistically significant at the alpha = 0.05 level.  We handle endogeneity by utilizing the first stage in this second regression, removing the possiblity of correlation with the error term.
+
+#Question 2
+
+###(a) Bivariate OLS
+```{r}
+tv <- import("Data/news_study_MAB.dta")
+
+regtv_1 <- tidy(lm(InformationLevel ~ WatchProgram, data = tv))
+
+regtv_1
+```
+These results may be biased by the fact that those who were likely to watch the program already had higher levels of information.  Thus, we may be confusing cause for effect in this case.
+
+###(b) Controlled Model
+```{r}
+regtv_2 <- lm(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education,
+                   data = tv)
+
+summary(regtv_2)
+
+nobs(regtv_2)
+
+```
+The results are relatively similar, we still have an estimate for WatchProgram which is statistically significant and has a similar substantive effect on InformationLevel.  However, we have not defeated endogeneity as we are still confused about the causal direction of many of these variables.  Does higher political interest lead to more information or is it the other way around?  In this model, we cannot say.
+
+###(c)
+```{r}
+regtv_tst <- lm(WatchProgram ~ TreatmentGroup + PoliticalInterest + ReadNews + Education,
+                     data = tv)
+
+tidy(regtv_tst)
+
+nobs(regtv_tst)
+```
+The assignment variable should be random assigned.  It's useful as an instrument, as it introduces a difference in the treatment variable (WatchProgram) without affecting the dependent variable (InformationLevel).  Above, I ran a simple OLS between treatment group and the explanatory variable to make sure that it is a strong instrument, which the above test confirms.
+###(d)
+```{r}
+ireg_tv <- ivreg(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education 
+      | TreatmentGroup + PoliticalInterest + ReadNews + Education, data = tv)
+
+ireg_tv
+
+summary(ireg_tv)
+
+nobs(ireg_tv)
+
+```
+There are 9 more observations in part (c) than in this 2SLS.  This is because there are several information levels which are missing.  We therefore find a different result for the first stage of the 2SLS.
+
+###(e)
+The results suggest that there is not a meaningful correlation between watching the prgram and information level, at the alpha equals 0.05 level.  We find less significant results than in part (b).  While we cannot say for certain whether we have defeated endogeneity, using the assignment of individuals to groups as an IV helps reduce endogeneity in this experiment as we can understand the difference of proportion in the groups from who watched the program and who didn't as the result of the assignment, thus creating a useful instrumental variable.
+
+#Question 4
+###(a)
+
+```{r}
+inmates <- import("Data/inmates.dta")
+
+inmates <- inmates %>%
+  mutate(state = factor(state), year = factor(year))
+
+regin_1 <- tidy(lm(prison ~ educ + age + AfAm + state + year, data = inmates))
+
+head(regin_1)
+```
+We find that education is extremely significant in the likelihood of going to prison.  The coefficient is small, however, when considering the unit of educ is in years, we find that the difference between no education and a full 12 years of education is quite substantive in terms of decreasing the probability of going to prison, reducing the relative probability by more than 30 percent.
+
+###(b)
+No, we cannot causally conclude that increasing education will reduce crime.  There are many confounding factors which alter one's chances of entering into the carceral state.  For example, the sample regression does not include economic factors, family background, geograpy, etc... which would bias the regression.
+
+###(c)
+
+```{r}
+ftest <- lm(educ ~ age + AfAm + state + year + ca9 + ca10 + ca11, data = inmates)
+
+linearHypothesis(ftest, c("ca9", "ca10", "ca11"))
+
+```
+
+Using the F test, we find that these are strong instruments for the given data.
+
+##(d)
+
+```{r, error = TRUE}
+ivreg(prison ~ educ + age + AfAm + state + year 
+           | ca9 + ca10 + ca11 + age + AfAm + state + year, 
+           data = inmates)
+```
+Unfortunately, it is not possible to currently run this regression due to a computer error which I have been unable to resolve.  While I should have the RAM available to run the regression, and I have allocated enough to R in order to do so, the ivreg simply will not work for the given size of the data set.  Likewise, this prevents me from answering part (e) of this question.
+#Question 5
+###(a)
+```{r}
+demin <- import("Data/democracy_income.csv") %>%
+  group_by(CountryCode) %>%
+  select(CountryCode, year, democracy_fh, log_gdp, worldincome, YearOrder)
+
+pdemin <- pdata.frame(demin)
+
+pdemin$lag_gdp <- lag(pdemin$log_gdp, k = 1)
+
+tidy(plm(democracy_fh ~ lag_gdp, data = pdemin, model = "pooling"))
+
+
+```
+We find that the lag of gdp is highly significant in the pooled regression model.  However, bias remains a concern.  We cannot be sure that gdp growth is the only factor leading to democracy.  Other theories may point toward institutions or history which are specific to these countries and may influence both gdp growth and democracy.
+
+###(b)
+
+```{r}
+head(tidy(plm(democracy_fh ~ lag_gdp + year + CountryCode, data = pdemin, model = "pooling")))
+```
+We still find a statistically significant correlation between lag_gdp and democratization.  However, the significance of the results is heavily reduced, though it remains significant at the alpha equals 0.05 level.
+###(c)
+```{r}
+tidy(plm(log_gdp ~ worldincome, data = pdemin, model = "pooling"))
+```
+The instrument must first satisfy the inclusion condition, which we determine above using a simple regression.  The instrument satisfies this condition, as world income is correlated with log gdp at the alpha equals 0.05 level.  The second condition is the exclusion restriction, which means that the dependent variable must not be correlated to the instrument, except through the independent variable.  However, we can only determine this theoretically, there is no statistical test which can be done in order to do so.
+
+```{r}
+head(tidy(plm(democracy_fh ~ lag_gdp + year + CountryCode | lag(worldincome, k = 1) + year + CountryCode, data = pdemin, model = "pooling")))
+```
+
+We find that the coefficient has become negative once we instrumentalize for worldincome, thus implying a negative relationship between lag_gdp and democracy.  This is the opposite of both the OLS and panel data results.  Likewise, the statistical significance of the result disappears, meaning that when we instrument the data we can no longer reject the null hypothesis that there is no relation between gdp and democratization.
