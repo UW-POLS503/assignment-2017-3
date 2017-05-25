@@ -1,0 +1,314 @@
+---
+title: "Assignment 3"
+author: "Sebastian Mayer"
+date: "May 24, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(tidyverse)
+library(haven)
+library(broom)
+library(AER)
+
+RainIV <- read_dta("Ch09.Ex1.CivilWarRainInstrumentData/Ch09.Ex1.CivilWarRainInstrumentData/RainIV.dta")
+
+write.csv(RainIV, file = "RainIV.csv")
+
+RainIV <- read.csv("Ch09.Ex1.CivilWarRainInstrumentData/Ch09.Ex1.CivilWarRainInstrumentData/RainIV.csv")
+```
+
+##Real Stats Chapter 9
+###Exercise 1
+
+###(a)
+
+Estimate a bivariate OLS model in which the occurence of civil conflict is the dependent variable. Comment on the results.
+
+```{r}
+reg1a <- lm(InternalConflict ~ LaggedGDPGrowth, data = RainIV)
+summary(reg1a)
+
+```
+A one unit increase in lagged GDP growth is, on average, associated with a negative effect of -0.08206 on the occurence of civil war. Thus, GDP growth seems to decrease the chances of civil war.
+
+###(b)
+
+Add control variables for initial GDP, democracy, mountains, and ethnic and religious fractionalization to the model in part (a). Do these results establish a causal relationship between the economy and civil conflict?
+
+```{r}
+reg1b <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+summary(reg1b)
+
+
+```
+While there remains a negative correlation between civil conflict and economic growth, this is not enough to make causal inferences about this relationship yet. First of all, there could be many omitted variables that have not been accounted for. Secondly, the LaggedGDPGrowth coefficient is not statistically significant.
+
+###(c)
+
+Consider lagged rainfall growth as an instrument for lagged GDP growth. WHat are the two conditions needed for a good instrument? Describe wether and how we test the two conditions. Provide appropriate statistucal results.
+
+
+A good instrument satisfies two conditions: 
+  1. it must be a statistically significant determinant of X1. In other words, it needs to be included in the first stage of the 2SLS estimation process.
+  2. it must be uncorrelated with the error term in the main equation, which means that it must not directly influence Y. In other words, an instrument must be properly excluded from the second stage of the 2SLS estimation process. This condition cannot be directly asserted statistically.
+
+```{r}
+reg1c <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+summary(reg1c)
+
+
+
+```
+
+Since the t value for LaggedRainfallGrowth is above 3 at 3.432, it can be assumed that the instrument is a statistically significant determinant of X1, making it a strong instrument. 
+
+###(d)
+
+Instrumenting for GDP with rainfall can determine how exogenous variation in Lagged GDP Growth affects the probability of internal confict. If the instrument is not correlated with the dependent variable, we can make causal estimates of the effect of LaggedGDPGrowth by regressing internal conflict on the estimated values of LaggedGDPGrowth.
+
+
+###(e)
+
+Use the dependent and independent variables from part (b), but now instrument for lagged GDP growth with lagged rainfall growth.
+
+```{r}
+
+reg1e <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac | LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+summary(reg1e)
+
+```
+
+
+
+
+###(f)
+
+Redo the 2SLS model in part (e), but this time use dummy variables to add country fixed effects.
+
+```{r}
+reg1f <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name | LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = RainIV)
+
+summary(reg1f)
+
+```
+
+Basically, including country fixed effects leads us to compare the effect of economic growth on the probability of civil war within every country, making it more country-specific. 
+
+
+###(g)
+
+```{r}
+reg1g <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = RainIV)
+
+residuals <- residuals(reg1g)
+
+regOLS <- lm(InternalConflict ~ LaggedGDPGrowth + residuals + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data = RainIV)
+summary(regOLS)
+
+
+
+```
+
+The coefficient on lagged GDP Growth here is the exact same as in the 2SLS. 
+
+
+###Exercise 2
+
+```{r}
+TV <- read.csv("Ch09.Ex2.TelevisionExperimentData/Ch09.Ex2.TelevisionExperimentData/news_study_MAB.csv")
+
+```
+
+###(a)
+
+```{r}
+reg2a <- lm(InformationLevel ~ WatchProgram, data = TV)
+summary(reg2a)
+
+```
+
+A one unit increase in watching the program is associated with, on average, a 0.296 increase in the information level abput Prop 209.
+Omitted variable biases is surely possible here, hence the results might be biased. 
+
+###(b)
+
+```{r}
+reg2b <- lm(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education, data = TV)
+summary(reg2b)
+
+```
+
+Both the standard error as well as the estimated coefficient is lower in the second regression, compared to 2a. However, we still cannot be sure that we have controlled for all possible variables that could influence our variable of interest. Thus, we probably have not defeated endogeneity.
+
+###(c)
+
+The assignment variable may be a good instrument if it satisfies the two condotions needed for a strong instrument: 
+
+1. it must be a statistically significant determinant of X1. In other words, it needs to be included in the first stage of the 2SLS estimation process. here, this means that treatment must be correlated with the level of information. This can be tested by simply regressing WatchProgramm on TreatmentGroup and checking whether the coefficient is bigger than 3 and statistically significant.
+
+2. it must be uncorrelated with the error term in the main equation, which means that it must not directly influence Y. In other words, an instrument must be properly excluded from the second stage of the 2SLS estimation process. This condition cannot be tested statistically. 
+
+```{r}
+TV$TreatmentGroup <- as.character(TV$TreatmentGroup)
+TV$TreatmentGroup[TV$TreatmentGroup != "0"] <- "1"
+TV$TreatmentGroup <- as.factor(TV$TreatmentGroup)
+TV$WatchProgram <- as.numeric(TV$WatchProgram)
+
+reg2c <- lm(WatchProgram ~ TreatmentGroup + PoliticalInterest + ReadNews + Education, data = TV)
+summary(reg2c)
+
+```
+
+Since the t value for TreatmentGroup1 is above 3, it can be determined that the assignment variable is a strong instrument.
+
+###(d)
+
+```{r}
+reg2d <- ivreg(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education | TreatmentGroup + PoliticalInterest + ReadNews + Education, data = TV)
+
+summary(reg2d)
+
+nrow(model.frame(reg2d))
+
+summary(reg2c)
+nrow(model.frame(reg2c))
+
+```
+
+The sample sizes are slightly different, with 498 in part (d) and 507 in part (c). Similarly, the degrees of freedom are slightly diffeent, with 472 and 481 respectively. 
+
+
+###(e)
+
+```{r}
+summary(reg2b)
+summary(reg2d)
+
+```
+
+Since both the inclusion condition is met as tested, and the exclusion condition seems to be met as well, the 2SLS method appears to be the model that should be paid most attention to. This model shows statistically insignificant results for the effect of watching the program on information levels.
+
+
+###Exercise 4
+
+```{r}
+
+Crime <- read.csv("Ch09.Ex4.EducationCrimeData/Ch09.Ex4.EducationCrimeData/inmates.csv")
+
+```
+
+###(a)
+
+```{r}
+reg4a <- lm(prison ~ educ + age + AfAm + state + year, data = Crime)
+summary(reg4a)
+
+```
+
+Each additional year of education is associated, on average, with a 0.001 decrease in the probability of being in prison. The result is statistically significant.
+
+
+###(b)
+
+Just by running this model, there is no way for us to establish causality. There could be a range of potential variables that affect this relationship in ways we can not figure out with this model alone.
+
+###(c)
+
+In order to satisfy the two conditions for good instruments, the set of instruments has to have a significant effect on education and compulsory attendance laws can only affect the probability of being in prison through the effect of the law on years of education. While the first condition can be tested with an F-test, the second consition is not statistically testable. 
+
+```{r}
+unrestricted_stage1 <- lm(educ ~ age + AfAm + state + year + ca9 + ca10 + ca11, data = Crime)
+
+restricted_stage1 <- lm(educ ~ age + AfAm + state + year, data = Crime)
+
+anova(unrestricted_stage1, restricted_stage1)
+
+```
+
+The F-statistic is statistically significant. Therefore, the first condition for a good instrument is met.The second condition seems to be met to, since it apperas to be fairly valid that the effect of complulsory education only affects the probability of imprisonment through the number of years of education.
+
+###(d)
+
+```{r}
+reg4d <- ivreg(prison ~ educ + age + AfAm + state + year | ca9 + ca10 + ca11 + age + AfAm + state + year, data = Crime)
+
+summary(reg4d)
+
+```
+Using this model, the results show that a one year increase in education, on avergae, is associated with a 0.002 decrease in the probability of going to jail. 
+
+
+###(e)
+
+When comparing the OLS with the 2SLS, it turns out that the standard error of the 2SLS method is bigger. However, with the effect sizes being very small in both models, and the standard errors fairly small as well, it should not pose that big of an issue.
+
+
+###Exercise 5
+
+```{r}
+
+Dem <- read.csv("Ch09.Ex5.GrowthDemocracyData/Ch09.Ex5.GrowthDemocracyData/democracy_income.csv")
+
+```
+
+
+###(a)
+
+```{r}
+reg5a <- lm(democracy_fh ~ lag(log_gdp), data = Dem)
+summary(reg5a)
+
+```
+
+A one percent increase in the previous year's GDP is associated with a 0.21 increase in the freedom house score. 
+
+An obvious concern with this model is omitted variables that are not controlled for. Also, it is not quite clear whether econmomic growth leads to democracy, or whether there is a reverse causality at hand in which democracy leads to higher income. 
+
+###(b)
+
+```{r}
+
+reg5b <- lm(democracy_fh ~ lag(log_gdp) + year + CountryCode, data = Dem)
+summary(reg5b)
+
+
+```
+
+In the fixed-effects model, the coefficient on laglogGDP is fairly similar to the previous model. What does changes pretty significantly, however, is the intercept.
+
+
+###(c)
+
+```{r}
+
+reg5c <- lm(log_gdp ~ worldincome + year + CountryCode, data = Dem)
+summary(reg5c)
+
+```
+
+In order for the instrument to be good, world income has to be correlated with logged GDP. Because regressing logGDP on worldincome returns a statistically significant coefficient, this criteria is met.Moreover, it is a strong instrument, since the t value exceeds 3. 
+
+The second condition needed to make this instrument good is that world income cannot be correlated with democracy, other than through the GDP of a country.SInce there is no statistical test for this, it can only be reasonably argued that this condition is met or not. I think it is hard to make a compelling case that world income has absolutely no correlation with democracy. Therefore, I would consider the second condition needed for a good instrument to not be met. 
+
+###(d)
+
+```{r}
+reg5d <- ivreg(democracy_fh ~ lag(log_gdp) + year + CountryCode | lag(worldincome) + year + CountryCode, data = Dem)
+summary(reg5d)
+
+
+```
+
+The coefficients of the different models are fairly similar to each other, with the 2SLS model slighty smaller at 0.15, whereas OLS and fixed effects had around 0.20. Similarly, OLS and fixed effects have very similar standrad error, which are somewhat lower than those of the 2SLS model. 
+
+
+
+
