@@ -1,0 +1,285 @@
+---
+title: "Real Stats ch. 3 exercises"
+author: "Grace Reinke"
+date: "5/17/2017"
+output: pdf_document
+---
+
+# 1. Economic growth and civil conflict (Real Stats pg. 318)
+```{r setup, include=FALSE}
+# importing the data from Oxford website: http://global.oup.com/us/companion.websites/9780199981946/stu/ch9/data_sets/
+
+library(readr)
+RainIV <- read_csv("~/Downloads/Ch09.Ex1.CivilWarRainInstrumentData 2/RainIV.csv")
+```
+
+## (a) Bivariate OLS model 
+```{r}
+
+reg1 <- lm(InternalConflict ~ LaggedGDPGrowth, data = RainIV)
+summary(reg1)
+```
+These preliminary OLS results show that GDP growth, as it's modeled in the paper, is correlated with civil conflict ("internal conflict"), and that there is a negative relationship between the two. In other words, for every one unit increase in civil conflict there is an associated 0.082 DECREASE in GDP growth. When GDP growth is higher, civil conflict is more likely to be less frequent in the selected countries, according to the model. 
+
+## (b) Adding in controls
+```{r}
+reg1_controls <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+summary(reg1_controls)
+```
+You cannot draw a causal relationship between GDP growth and civil conflict for a couple reasons. First, after adding in controls the statistical significance of the coefficient estimate of GDP growth's effect on conflict goes away. Additionally, the standard errors associated with the relationship are very big, which prevents us from making definitive claims about the observed relationship based on the model. 
+
+## (c) Rainfall as instrument for GDP growth
+```{r}
+# testing the inclusion condition: testing endogeneity of rainfall and GDP growth
+first_stage <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth, data = RainIV)
+summary(first_stage)
+# the relationship is statistically significant, so the inclusion condition is satisfied.
+
+```
+The above results indicate that this instrumental model satisfies the inclusion condition, because the relationship between ranifall and GDP growth is statistically significant (and positive), which indicates that the two variables of interest are endogenous and related. 
+
+To sastify the EXCLUSION condition, the istrument (Rainfall) must be uncorrelated with the error term in the original equation, so that we can safely eliminate the instrument from the second stage of 2SLS. This condition, however, cannot be empirically tested. This conditionwould need to be  satisfied somewhere in the paper outside just the model. The exclusion condition would be satisfied if we could say with some certainty that rainfall is relatively uncorrelated with civil conflict.
+
+## (d) Explain.
+Using Rainfall as an instrument for GDP growth can help us identify a causal effect of economic growth on civil conflict because it is believed to be exogenous. There isn't an obvious causal connection between when it rains and when countries experience civil conflict, so the treatment can be assumed as treatment, whereas economic growth and civil conflict and the relationship between them faces brings up issues of endogeneity because they are related to each other  through multiple channels. If rainfall is an instrument for economic growth, it can give a reliable causal estimate that avoids engogeneity related to the many potnetial drivers of a country's civil conflict. 
+
+## (e) Using IVREG to instrument rainfall for growth
+```{r}
+reg1_controls <- lm(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+library(AER)
+ivreg1 <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac | LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+summary(ivreg1)
+
+```
+These results show a negative relationship (-2.06) between Lagged rainfall growth and internal conflict, which fits with the hypothesis that rainfall, when used as an instrument for economic growth, can help predict when a country will engage in civil conflict. These results fit with the hypothesis that more rain, or more economic growth, even when holding other factors constant, will lead to less civil conflict. However, the coefficient estimate on the variable of interest is not statistically significant, and the standard error on the relevant coefficient is very high, which makes it harder to draw any causal conclusions from the model in its current form. 
+
+## (f) Using dummy variables to add country fixed effects 
+```{r}
+library(AER)
+ivreg2 <- ivreg(InternalConflict ~ LaggedGDPGrowth + as.factor(country_name) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac | LaggedRainfallGrowth + as.factor(country_name) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+summary(ivreg2)
+```
+Interpreting fixed effects: (code-wise, adding as.factor before a variable), account for country-level or year-level, etc. differences between observations, including fixed effects treats differences between these groups as a kind of omitted variable bias. Also called indicator variables; bringing more constant but unobserved differences/details into the model. Effectively dummy variables; they change the intercepts between groups, so it's like removing the mean values for all groups; controlling for everything that is fixed WITHIN that country. 
+
+In this model, the p value on our variable of interest gets much lower when the fixed effects are added in. What does this mean? Usually, adding in fixed effects will decrease your certainty w respect to the relationship you're looking to model. However, in this case, the p-value for the variable of interest decreases signficantly, leading us to believe that the relationship between our instrument and outcome variable of interest is even stronger when accounting for country fixed effects. However, the standard error is still very large and the relationship remains statistically insignificant despite the lower p-value. 
+
+## (g) Saving the residuals to run second stage. 
+```{r}
+# Estimating stage 1 from ivreg2
+funky_reg <- lm(InternalConflict ~ LaggedGDPGrowth + as.factor(country_name) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+summary(funky_reg)
+
+# saving the residuals 
+funky_resids <- residuals(funky_reg)
+funky_resids
+
+# running OLS with variables from part f
+reg_ols <- lm(InternalConflict ~ LaggedGDPGrowth + as.factor(country_name) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+# using lagged GDP growth and residuals 
+funky_reg <- lm(InternalConflict ~ LaggedGDPGrowth + as.factor(country_name) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = RainIV)
+
+new.data <- cbind(RainIV, resid = resid(funky_reg))
+
+# new adding residuals into first stage 
+funky_reg2 <- lm(InternalConflict ~ LaggedGDPGrowth + as.factor(country_name) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data = new.data)
+summary(funky_reg2)
+```
+first LaggedGDPGrowth coeff from 2SLS (ivreg command):
+-2.853380
+second LaggedGDPGrowth coeff: 
+-0.0853792  
+
+When using the residuals saved from the first stage of the 2SLS model, the resulting coefficient estimate is smaller than that from the first stage of the 2SLS. The relationship is still negative, meaning that more civil conflict is associated with a decrease in GDP growth. 
+*How is endogeneity dealth with in each model?*
+
+
+# 2. Television and knowledge about public affairs (Real Stats pg. 320)
+
+## (a) Bivariate OLS estimate
+```{r}
+# uploading the data 
+news_data <- read_csv("~/Downloads/Ch09.Ex2.TelevisionExperimentData/news_study_MAB.csv")
+
+news_reg1 <- lm(InformationLevel ~ WatchProgram, data = news_data)
+summary(news_reg1)
+```
+This first regression model gives us an estimate for the relationship between watching the treatment program and later information level. For every one unit increase in the treatment (From 0 to 1) there is an estimated 0.2963 rise in level of information reported. 
+
+It is likely that these results are biased because of compliers and non-compliers with respect to the treatment. Since it is possible that those who were assigned to watch the treatment program didn't fully comply by not watching, or only watching part of it, the results would be biased toward compliers, and would more heavily represent people who actually watched the program and were resultantly more informed because of it. 
+
+There is also the chance that reporting bias could be at work in this example, because subjects were interviewed about their level of political information, and might have felt compelled to answer that they were more informed than they actually were, especially if they were interviewed/surveyed by someone who they thought was more informed thant them. 
+
+
+## (b) Including other controls 
+```{r}
+news_reg2 <- lm(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education, data = news_data)
+summary(news_reg2)
+```
+After including the controls, the estimated change in information level associated with the treatment of watching the program is about 0.193. This positive relationship is smaller than that estimated in the first model with no controls, which indicates that some of the endogeneity and confounders that went unacknowledged in the first model are accounted for in the second by the inclusion of some controls. However, we cannot say for sure if endogeneity has been sufficiently dealt with because there are many potential confounders that remain, and the "watched program" variable cannot be treated as random assignment like the "assignment" variable can. For this reason, the experiment lends itself to an instrumental variable approach. 
+
+## (c) Explanation of the instrument variable. 
+The assignment variable is the best option for an instrumental variable in this case because it was randomly assigned within the reseach design. Although it cannot solve the problems associated with non-compliance, it can allow the researchers to treat the two groups as randomized, which lets them draw conclusions about the exogeneity of the independent variable. That randomness also lets the researchers perform regression tests and t tests under the assumption that the treatment is random, normally distributed, and related to the dependent variable. 
+
+## (d) Estimating a 2SLS model with control variables (using IVreg)
+```{r}
+library(dplyr)
+# re-coding "watch program" with 0 and 1: 
+news_data <- news_data %>%
+  mutate(watched = ifelse(WatchProgram == 0, 0, 1)) %>%
+  mutate(treated = ifelse(TreatmentGroup == "prompted(salmon)", 1, 0))
+# View(news_data)
+
+# testing the first stage for inclusion condition/instrument quality
+firststage_news <- lm(watched ~ treated + PoliticalInterest + ReadNews + Education, data = news_data)
+summary(firststage_news)
+# texreg(firststage_news)
+
+ivreg_news <- ivreg(InformationLevel ~ watched + PoliticalInterest + ReadNews + Education | treated + PoliticalInterest + ReadNews + Education, data = news_data)
+summary(ivreg_news)
+
+#comparing OLS results to 2SLS results: 
+```
+The estimate produced on the treatment coefficient is much higher in the first model, and the IV reg model shows that, although the estimated change in means between treatment and control groups is much smaller than that from the previous model, it is still statistically significant. 
+*HOW DO YOU CHECK THE SAMPLE SIZES?*
+
+## (e) What does 2SLS tell us about the relationship between watching and information level? 
+According the the OLS model, the treatment effect of watching a certain TV program is associated with an average 0.19 increase in information level among voters in the experiment. Under the 2SLS model using treatment as an instrument for watching the program, the average estimated change in level of information is about 0.193. Both estiamted relationships are positive, implying that watching the program leads to higher levels of information among voters in the model. Because the treatment variable is a reliable instrument (see results in part D), it seems like the issue of endogeneity has been sufficiently dealt with, because the instrument is unrelated to the outcome variable except for its relationship to X (i.e. treatment variable with actually watching the program; treatment as exogenous to information level prior to the experiment). 
+
+# 4. Does education reduce crime? 
+
+## (a) Linear probability model: 
+```{r}
+# importing the data
+library(readr)
+inmates <- read_csv("~/Downloads/Ch09.Ex4.EducationCrimeData/inmates.csv")
+
+# VERY LARGE DATASET CRASHES R WHEN RUNNING BELOW CODE 
+# crime_reg1 <- lm(prison ~ educ + age + AfAm + as.factor(state) + as.factor(year), data = inmates)
+```
+Report results with brief description: 
+
+## (b) Can we conclude that increasing education reduces crime? 
+This is a difficult causal conclusion to make after only running this first OLS model. This is because there are many possible confounders in the relationship between years of schooling and whether or not someone ends up in prison. This first model attempts to account for some of them, like African American race and age, but it does not account for many others, like poverty level, city of residence, etc. 
+
+## (c) 2SLS model compulsory attendance laws as instrument
+A 2SLS model that uses state-level changes in compulsory school attendance laws as an instrument for education has the advantage of a treatment effect that is exogenous. We assume that whether or not a state enacts a new law is unrelated to existing trends of crime and education, and using that as a treatment instrument therefore satisfies the inclusion condition. To further test this, we can test only the first stage of the 2SLS model to show that compulsory laws and actual levels of education are likely correlated with each other (shown below). If the results of the regression below are statisically significant, they will show that the instrument of compulsory education laws has a significant effect on our outcome variable of interest, level/years of education. This indicats that the inclusion condition has been met.
+```{r}
+# estimating the first stage model to test whether or not the inclusion condition of 2SLS is satisfied: 
+# test_first_stage <- lm(educ ~ ca9 + ca10 + ca11, data = inmates)
+```
+In this model, the exclusion condition implies that compulsary education laws cannot explain changes in someone's likelihood to end up in prison. The exclusion condition may or may not be satisfied by using compulsory education laws as the model's instrument. We assume that, since crime is the Y (variable of interest) in our equation, it is unrelated to states' passage of compulory ed. laws. This seems logical enough, since the actions of state law makers seem at face value unrelated to someone's likelihood to end up in prison. However, we can't "prove" this empirically using code. 
+
+## (d) 2SLS model described above: 
+```{r, eval=FALSE, include=FALSE}
+library(AER)
+library(dplyr)
+
+# creating a new variable for treatment/control 
+# binary variable for compulsory attendance laws (0 = control, 1 = treated)
+treatment_data <- inmates %>%
+  mutate(treated = ifelse(ca9 == 1 | ca10 == 1 | ca11 == 1, "1", "0"))
+
+# iv reg for 2SLS
+ivreg_crime <- ivreg(prison ~ educ + age + AfAm + as.factor(state) + as.factor(year) | treated + age + AfAm + as.factor(state) + as.factor(year), data = treatment_data)
+
+summary(ivreg_crime)
+```
+*Briefly explain results:*
+
+## (e) Is 2SLS less precise than OLS? 
+It makes logical sense that 2SLS is seen as less precise than OLS, because the causal relationship we see to measure has to be observed through multiple instruments, rather than just the one relationship modeled in OLS estimates. In this case, however, I don't think the 2SLS model is less precise than just OLS. This is because the selected instrument, state-level compulsory ed. laws, takes into account nuance over space and time, because difference states enact different laws at different times. This instrument, instead of making the relationship between prison and education more abstract, helps to account for more variation among states and years in which certain laws are adapted. This implies that every observation, or every incarcerated person, is treated with attention to where they are and when they are incarcerated, rather than just whether or not they are in prison. 
+
+
+# 5. Does economic growth lead to democracy? 
+
+## (a) Running a pooled regression model. 
+```{r}
+# importing the data 
+library(readr)
+democracy_income <- read_csv("~/Downloads/Ch09.Ex5.GrowthDemocracyData/democracy_income.csv")
+
+# adding in a lag for GDP and running OLS model 
+democracy_reg1 <- lm(democracy_fh ~ lag(log_gdp), data = democracy_income)
+summary(democracy_reg1)
+```
+Describing the results: The results from this model show that a one unit change in a country's democracy score is associated on average with a 0.219 increase in lagged GDP growth. These resutls fit with the hypothesis that economic growth can lead to democracy. Some concerns with this model are many possible confounders. The two variables of interest, GDP growth and democracy score, are highly endogenous with almost any observable aspect of any country. This means that the error term associated with the regression equation, and the effects not captured by the modeled relationship, are both very large.
+
+A second concern with this model is the problem of exclusion, meaning that the assumption that any change observed in the outcome variable of democracy score is associated only with economic growth is unlikely to reflect the reality and the actual relationship that the researchers are interested in measuring. 
+
+## (b)Including fixed effects in the model. 
+```{r}
+democracy_reg2 <- lm(democracy_fh ~ lag(log_gdp) + as.factor(year) + as.factor(CountryCode), data = democracy_income)
+
+summary(democracy_reg2)
+```
+What changed about the results due to fixed effects being included? Adding in the above fixed effects to the original equation has the predictable effect of significantly shrinking the coefficient estimat eassociated with the model's variable of interest. According to this model, the positive change in lagged GDP growth associated with a one unit increase in a country's average democracy score is about 0.03 and statistically significant. This is substantially lower than that observed in the first model, which indicates that individual nuances between country and year account for a lot of the previously observed causal relationship between GDP growth and democracy. 
+
+## (c) Using 2SLS: Changing income of trading partners as instrument for GDP growth 
+```{r}
+library(AER)
+# IV reg model without lags:
+ivreg_growth <- ivreg(democracy_fh ~ log_gdp + as.factor(year) + as.factor(CountryCode) | worldincome + as.factor(year) + as.factor(CountryCode), data = democracy_income)
+summary(ivreg_growth)
+
+# do we need to add the controls to test the first stage of this model? 
+
+# testing the first stage to see if inclusion condition is met:
+stage_1 <- lm(democracy_fh ~ worldincome + as.factor(year) + as.factor(CountryCode), data = democracy_income)
+summary(stage_1)
+# are these results statistically significant? 
+
+```
+Discussion: Is this a viable instrument? 
+The test above tests to see whether or not the proposed model, of using world income as an instrument for any given country's GDP growth, can satisfy the inclusion condition which would require that the worldincome variable has some predictive power with respect to the variable of interest: GDP growth. Running the first stage regression shows that worldincome does have small but statistically significant predictive power with respect to lagged GDP growth.
+
+With regard to the exclusion condition, assuming that the changing income of any country's trading partners is completely unrelated to that country's level of democracy as measuared by the democracy score seems untenable. Potential endogeneity between these two variables could make this instrument less viable than others for predicting relationships between GDP growth and democracy. 
+
+## (d) Running lagged 2SLS model
+```{r}
+ivreg_growth_2 <- ivreg(democracy_fh ~ lag(log_gdp) + as.factor(year) + as.factor(CountryCode) | lag(worldincome) + as.factor(year) + as.factor(CountryCode), data = democracy_income)
+summary(ivreg_growth_2)
+
+# comparisons with previous OLS
+head(coefficients(ivreg_growth_2))
+
+# OLS
+democracy_reg3 <- lm(democracy_fh ~ lag(log_gdp) + as.factor(year) + as.factor(CountryCode), data = democracy_income)
+summary(democracy_reg3)
+```
+Compare these results to those in part (a): 
+
+*Results from OLS in part a:*
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  -1.122402   0.071784  -15.64   <2e-16 ***
+lag(log_gdp)  0.206947   0.008727   23.71   <2e-16 ***
+
+*Results from 2SLS in part d:* 
+Coefficients:
+                          Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                0.75329    0.39265   1.918 0.055378 .  
+lag(log_gdp)              -0.09385    0.05184  -1.810 0.070581 .  
+
+As the above results show, the relationship between GDP growth and democracy score is on average a negative change. This is not the case when only observing the relationship with OLS and without the instrument of worldincome in a 2SLS model. This disparity might be related to the fact that the chosen instrument is not effective for measuring the vairable we are actually interested in. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
