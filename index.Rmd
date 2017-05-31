@@ -243,11 +243,33 @@ The standard error is larger in the 2SLS regression than in the OLS regression. 
 
 
 # Problem 5
+### Original Answer
 ```{r}
 econ_data <- read.csv("Ch09.Ex5.GrowthDemocracyData/democracy_income.csv")
 ```
 
+### Corrected Answer
+```{r}
+GrowthDemocracyFile <- "Ch09.Ex5.GrowthDemocracyData/democracy_income.csv"
+col_types = cols(
+  CountryCode = col_integer(),
+  democracy_fh = col_double(),
+  log_gdp = col_double(),
+  year = col_integer(),
+  worldincome = col_double(),
+  YearOrder = col_integer()
+)
+econ_data <- read_csv(GrowthDemocracyFile, col_types = col_types) %>%
+  # add lag GDP
+  group_by(CountryCode) %>%
+  arrange(CountryCode, year) %>%
+  mutate(lag_log_gdp = lag(log_gdp),
+         lag_worldincome = lag(worldincome))
+```
+
+
 ## Problem 5a
+### Original Answer
 ```{r}
 FiveA <- lm(democracy_fh ~ lag(log_gdp), data=econ_data)
 summary(FiveA)
@@ -256,14 +278,29 @@ The results indicate that a one percent increase in last year's GDP leads a .21 
 
 There are several concerns. For instance, there are many omitted variables on the right side of the equation (e.g. a measure of current conflict in each country). Furthermore, it's not clear to me whether a one year lag on GDP is appropriate. I'm not sure if the lag should be longer or if there should be any lag at all. As was mentioned in the question, there may be some reverse causality, leading to plenty of endogeneity in the simplified bivariate OLS above. In addition, the model intercept (-1.22) is non-sensical, since the freedom house index ranges from 0 to 1.
 
+### Corrected Answer
+```{r}
+FiveA <- lm(democracy_fh ~ lag_log_gdp, data=econ_data)
+summary(FiveA)
+```
+The results indicate that a one percent increase in last year's GDP leads a .23 higher score on the freedom house measure.
+
+There are several concerns. For instance, there are many omitted variables on the right side of the equation (e.g. a measure of current conflict in each country). Furthermore, it's not clear to me whether a one year lag on GDP is appropriate. I'm not sure if the lag should be longer or if there should be any lag at all. As was mentioned in the question, there may be some reverse causality, leading to plenty of endogeneity in the simplified bivariate OLS above. In addition, the model intercept (-1.34) is non-sensical, since the freedom house index ranges from 0 to 1.
 
 ## Problem 5b
+### Original Answer
 ```{r}
 FiveB <- lm(democracy_fh ~ lag(log_gdp) + year + CountryCode, data=econ_data)
 summary(FiveB)
 ```
 The coeffiient on lagged,logged GDP is very similar in the fixed-effects model (.22) as it was in the bivariate OLS (.21). The intercept changes quite a bit; it was -1.22 in the bivariate OLS and is 3.6 in the fixed effects model.
 
+### Corrected Answer
+```{r}
+FiveB <- lm(democracy_fh ~ lag_log_gdp + factor(year) + factor(CountryCode), data=econ_data)
+summary(FiveB)
+```
+The coefficient on lagged logged GDP is quite a bit lower with the inclusion of the fixed effects. Country and time tend to do a very good job of explaining the differences in freedom house score.
 
 ## Problem 5c
 The inclusion criteria stipulates that world income be correlated with logged GDP for a given country. We can test whether the inclusion criteria is satisfied statistically. Since the coefficient on worldincome is statistically significant when we regress log_gdp on worldincome, we can say that the inclusion criteria is satisfied. Since the t-statistic is greater than 3, we can say that worldincome is a strong instrument. 
@@ -273,13 +310,27 @@ summary(FiveC)
 ```
 The exclusion criteria stipulates that world income not be correlated with democracy, except through a country's GDP. There is no statistical test to determine whether the exclusion criteria is satisfied. I would argue that the exclusion criteria is not satisfied, however. Conceptually, it seems entirely probable to me that the income of trading partner countries is correlated with violence in trading partner countries. That violence can affect a country's freedom house score in many ways. For instance, perhaps violence in a neighboring country will cause a mass exodus of people from the country experiencing violence into that country's trading partners. An inflow of refugess can change the political climate in a country markedly.
 
+### Corrected code (fixed effects were incorrectly specified)
+```{r}
+FiveC <- lm(log_gdp ~ worldincome + factor(year) + factor(CountryCode), data=econ_data)
+summary(FiveC)
+```
 
 ## Problem 5d
+### Original Answer
 ```{r}
 FiveD <- ivreg(democracy_fh ~ lag(log_gdp) + year + CountryCode | lag(worldincome) + year + CountryCode, data=econ_data)
 summary(FiveD)
 ```
 The coefficient is quite similar in the 2SLS, OLS, and fixed effects models (.19, .21, and .22, respectively). The standard errors are quite a bit smaller in the fixed effects model (.008) and OLS model (.008) than in the 2SLS model (.04), as is to be expected.
+
+### Corrected Answer
+```{r}
+FiveD <- ivreg(democracy_fh ~ lag_log_gdp + factor(year) + factor(CountryCode) | lag_worldincome + factor(year) + factor(CountryCode), data=econ_data)
+summary(FiveD)
+```
+The coefficient is quite different in the panel data, OLS, and fixed effects models (.04, .23, and -.21, respectively). The standard errors are quite a bit smaller in the panel data model (0.05) and OLS model (0.03) than in the 2SLS model (0.12), as is to be expected.
+
 
 # References {-}
 "Replace a Value in a Data Frame Based on a Conditional (`if`) Statement in R." StackOverflow. Stack Exchange, n.d. Web. 23 May 2017. <https://stackoverflow.com/questions/5824173/replace-a-value-in-a-data-frame-based-on-a-conditional-if-statement-in-r>. question posted on 4/28/11. referenced the accepted answer posted on 4/28/11.
