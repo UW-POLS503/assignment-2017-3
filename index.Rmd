@@ -48,6 +48,13 @@ The two conditions required for a good instrument are the inclusion and exclusti
 OneC <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac, data=data)
 summary(OneC)
 ```
+
+```{r}
+# Adding graphing code from solutions file
+ggplot(data, aes(x = LaggedRainfallGrowth, y = LaggedGDPGrowth)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
 The exclusion criteria stipulates that the instrument not be correlated with the dependent variable, except through it's relationship with the independent variable. There is no statistical test to determine if the exclusion criteria is satisfied (though falsification tests are sometimes done in an attempt to statistically prove that the exclusion criteria is met). Therefore, we need to conceptually decide if the exclusion is met. As someone mentioned in class, rainfall is associated with food scarcity. Food scarcity is often a harbinger of conflict. Therefore, I would argue that rainfall does not satisfy the exclusion criteria and is therefore not a suitable instrumental variable. 
 
 ## Problem 1D
@@ -75,18 +82,65 @@ By including country fixed effects, we're effectively comparing the effect of La
 
 ## Problem 1g
 ```{r}
+# Original answer (corrected answer below)
 OneG <- lm(LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
 residuals <- residuals(OneG)
 OLS <- lm(InternalConflict ~ I(LaggedGDPGrowth - residuals) + InitialGDP + Democracy + Mountains + EthnicFrac + ReligiousFrac + country_name, data=data)
 summary(OLS)
 ```
+
 The coefficient on LaggedGDPGrowth is the same in the OLS and 2SLS models (-2.85). In the 2SLS model, the y-hat values for LaggedGDPGrowth from the first stage are used as the independent variable in the second stage regression. The 2SLS and OLS specifications are related. The y-hat values from the first stage of the 2SLS model are simply the fitted values of the first stage regression; the fitted values are equal to the actual values minus a residual. So subtracting the residuals from the actual values in the OLS model yields the same coefficient on LaggedGDPGrowth, since it makes the independent variables equivalent in each model. 
 Endogeneity is being handled in the OLS specification for the same reason it's handled in the 2SLS model; the independent variable is now a product of the effect of the instrument and other independent variables on economic growth. Therefore changes in economic growth are not correlated with the error term when regressing conflict on growth.
 
+
+```{r}
+# Corrected answer
+data$resid <- residuals
+OneG_Corrected <- lm(InternalConflict ~ LaggedGDPGrowth + resid + InitialGDP +
+               Democracy + Mountains + EthnicFrac + ReligiousFrac + country_code,
+               data = data)
+coef(OneG_Corrected)["LaggedGDPGrowth"]
+
+```
+The coefficient on LaggedGDPGrowth is the same in the OLS and 2SLS models (-2.85). Endogeneity is being handled in the OLS specification for the same reason it's handled in the 2SLS model; the independent variable is now a product of the effect of the instrument and other independent variables on economic growth. Therefore changes in economic growth are not correlated with the error term when regressing conflict on growth.
+
 # Problem 2
 ```{r}
+# Original answer
 tv.data <- read.csv("Ch09.Ex2.TelevisionExperimentData/news_study_MAB.csv")
 ```
+
+```{r}
+# Corrected answer
+# Using the dataset created in the solutions scripts, it seems that more observations were deleted due to missingness in Part B causing my answer and the answer on the solutions sheet to differ slightly.
+# The coefficient on my original 2D estimate varies slightly from the coefficient from the coefficient in the solutions file and my standard error was originally twice as high. I get the same answer as the answer set when I read in and clean the data the same way the solutions file does.
+tv.data <- "Ch09.Ex2.TelevisionExperimentData/news_study_MAB.csv"
+col_types <- cols(
+  resid = col_character(),
+  Female = col_character(),
+  watchnat = col_character(),
+  ReadNews = col_character(),
+  pnintst = col_character(),
+  Education = col_character(),
+  income = col_character(),
+  Voted = col_character(),
+  prop = col_character(),
+  infopro = col_character(),
+  WatchProgram = col_character(),
+  learnpro = col_character(),
+  TreatmentGroup = col_character(),
+  prop_dv = col_integer(),
+  InformationLevel = col_integer(),
+  prop_vote = col_integer(),
+  white = col_integer(),
+  partyid = col_integer(),
+  PoliticalInterest = col_character()
+)
+tv.data <- read_csv(NEWS_STUDY_FILE, col_types = col_types) %>%
+  mutate(WatchProgram = if_else(WatchProgram == "yes", 1, 0),
+         TreatmentGroup = if_else(WatchProgram == "0", 0, 1))
+```
+
 
 ## Problem 2a
 ```{r}
@@ -103,6 +157,8 @@ summary(TwoB)
 The estimated coefficient is lower in the second regression, as is the standard error. Both coefficients are statistically significant. I would argue that we have not defeated endogeneity. There are plenty of other omitted variables that could be biasing the results (e.g. variables that may determine someone's a priori opinion on affirmative action). Therefore, I would argue that the equation does not estimate an exogenous effect of X on Y.
 
 ## Problem 2c
+
+### Original Answer
 The assignment variable will be a good instrument if it satisfies the inclusion and exclusion criteria. The inclusion criteria in this case stipulates that the treatment is correlated with the level of information that someone has on the topic. We can test this quite easily be regressing WatchProgram on TreatmentGroup and determining if the coefficient is statistically significant. The coefficient is statistically significant and is well above 3, thus we have a very strong instrument.
 ```{r}
 tv.data$TreatmentGroup <- as.character(tv.data$TreatmentGroup)
@@ -118,6 +174,9 @@ summary(TwoC)
 
 There is no test for the exclusion criteria. We need to determine if TreatmentGroup is correlated with InformationLevel, outside of through WatchProgram. Conceptually, it seems reasonable to argue that the exclusion criteria is satisfied.
 
+### Corrected Answer
+Since we are looking at a randomized experiment, the WAtchProgram was randomly assigned. Assuming the study was properly balanced, we can say that watching the program is not correlated with the dependent variable.
+
 ## Problem 2d
 ```{r}
 TwoD <- ivreg(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education | TreatmentGroup + PoliticalInterest + ReadNews + Education, data=tv.data)
@@ -129,10 +188,19 @@ nrow(model.frame(TwoD))
 summary(TwoB)
 nrow(model.frame(TwoB))
 ```
+### Original Answer
 The coefficients are quite similar in the two regressions. The standard error is quite a bit higher in 2d, and thus the coefficient on WatchProgramYes is statistically significant at the alpha=.1 level in 2B but not 2D. The sample sizes and degrees of freedom in each regression are the same (498 and 472, respectively).
 
+### Corrected Answer
+The coefficients are quite similar in the two regressions. The sample sizes and degrees of freedom in each regression are the same (498 and 470, respectively).
+
+
 ## Problem 2e
+### Original Answer
 I am more confident in the results of the 2SLS model than the regression run in 2B. Both the exclusion and inclusion criteria appear to be met. I am more confident in the 2SLS model because of all of the endogeneity in the OLS model.
+
+# Corrected Answer
+The coefficient is statistically significant at the alpha = .15 level. I am more confident in the results of the 2SLS model than the regression run in 2B. Both the exclusion and inclusion criteria appear to be met. I am more confident in the 2SLS model because of all of the endogeneity in the OLS model. I believe that we have defeated endogeneity in the 2SLS model through creating exogenous variation in our WatchProgram.
 
 
 # Problem 4
