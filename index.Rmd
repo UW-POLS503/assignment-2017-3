@@ -215,28 +215,49 @@ summary(FourA)
 ```
 Since we're estimating a linear probability model, the coefficient denotes how the probability of being prison changes with respect to a one year increase in an indivdual's education. In the case of this model, each extra year of education is associated with a .001 decrease in the probability of being in prison. The coefficient is statistically significant (though perhaps not substantively significant) in this model.
 
+### Corrected code
+```{r}
+FourA <- lm(prison ~ educ + age + AfAm + factor(state) + factor(year), data=inmates.data)
+summary(FourA)
+```
+
 ## Problem 4b
 We cannot conclude that increasing education will decrease crime rates based on this model alone. For starters, there are several omitted variables that are not included in the equation that are leading to endogeneity (e.g. household income). In addition, there may be some reverse causality, thus making it difficult to use a simple OLS equation to determine causality.
 
 ## Problem 4c
+### Original answer
 The inclusion criteria stipulates that the instruments have a significant effect on education. We can use an F-test to determine if all of the variables satisfy the inclusion criteria. The null hypothesis of the F test is that the coefficient on each instrument is zero. Therefore, we'll reject the null if any coefficient is statistically significant (that is, if any instrumental variable satisfies the inclusion critera). Since the F-statistic is statistically significant and greater than 10, the inclusion criteria is satisfied (at least one of the package of instrumental variables is significantly correlated with education). 
 ```{r}
 unrestricted_stage1 <- lm(educ ~ age + AfAm + state + year + ca9 + ca10 + ca11, data=inmates.data)
 restricted_stage1 <- lm(educ ~ age + AfAm + state + year, data=inmates.data)
 anova(unrestricted_stage1, restricted_stage1)
 ```
-### Original answer
+
 The exclusion criteria stipulates that compulsory attendance laws only affect the probability of being in prison through the effect of the law on years of education. There is no statistical test to determine if the exclusion criteria is satisfied, but conceptually it seems reasonable to argue that the effect of compulsory education laws only affect probability of imprisonment through number of years of education. Therefore, I would argue that the compulsory education laws satisfy both the inclusion and exclusion criteria.
 
 ### Corrected answer
+The inclusion criteria stipulates that the instruments have a significant effect on education. We can use an F-test to determine if all of the variables satisfy the inclusion criteria. The null hypothesis of the F test is that the coefficient on each instrument is zero. Therefore, we'll reject the null if any coefficient is statistically significant (that is, if any instrumental variable satisfies the inclusion critera). Since the F-statistic is statistically significant and greater than 10, the inclusion criteria is satisfied (at least one of the package of instrumental variables is significantly correlated with education). 
+```{r}
+unrestricted_stage1 <- lm(educ ~ age + AfAm + factor(state) + factor(year) + ca9 + ca10 + ca11, data=inmates.data)
+restricted_stage1 <- lm(educ ~ age + AfAm + factor(state) + factor(year), data=inmates.data)
+anova(unrestricted_stage1, restricted_stage1)
+```
+
 The exclusion criteria stipulates that compulsory attendance laws only affect the probability of being in prison through the effect of the law on years of education. There is no statistical test to determine if the exclusion criteria is satisfied, but conceptually it seems reasonable to argue that the effect of compulsory education laws only affect probability of imprisonment through number of years of education. Therefore, I would argue that the compulsory education laws satisfy both the inclusion and exclusion criteria. However, it's also possible that the dependent variable (Crime) is somehow correlated with whether or not a state mandates that students stay in school for a certain number of years.
 
 ## Problem 4d
+### Original Answer
 ```{r}
 FourD <- ivreg(prison ~ educ + age + AfAm + state + year | ca9 + ca10 + ca11 + age + AfAm + state + year, data=inmates.data)
 summary(FourD)
 ```
 Since the second stage equation is a linear probability model, the coefficient on education denotes how the probability of being in prison changes with each one year increase in education levels. In the case of this model, a one year increase in education leads to a .002 decrease in the probability of ending up in prison.
+
+### Corrected Answer (do not seem to have enough memory to run)
+```{r}
+FourD <- ivreg(prison ~ educ + age + AfAm + factor(state) + factor(year) | ca9 + ca10 + ca11 + age + AfAm + factor(state) + factor(year), data=inmates.data)
+summary(FourD)
+```
 
 ## Problem 4e
 The standard error is larger in the 2SLS regression than in the OLS regression. I do not think that the larger standard error is necessarily a problem. All else being equal, a larger standard error necessarily means that we are more uncertain about the effect of our independent variable on our dependent variable. In the case of the 2SLS and OLS regressions, our effect size is so small (.002 and .001 respectively) that even a small standard error could cause our confidence interval to cross zero, thus causing us to be to be unsure if the independent variable has a negative, null, or positive effect on the dependent variable. In both the OLS and 2SLS regressions, the standard errors are small enough to lead us to believe that increasing education leads to a decrease in the probability of imprisonment.
