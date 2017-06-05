@@ -87,7 +87,7 @@ reg3 <- ivreg(InternalConflict ~ LaggedGDPGrowth + InitialGDP + Democracy + Moun
                 EthnicFrac + ReligiousFrac + factor(country_name) | LaggedRainfallGrowth + InitialGDP + 
                 Democracy + Mountains + EthnicFrac + ReligiousFrac + factor(country_name), data = rain)
 
-summary (reg3)
+summary(reg3)
 
 ```
 
@@ -97,17 +97,19 @@ In this 2SLS regression with dummy variables we find an effect at the 0.1 confid
 ```{r}
 # g) funky
 
-firststage <- ivreg (InternalConflict ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac +
-                       ReligiousFrac + country_name, data = rain)
+firststage <- lm (LaggedGDPGrowth ~ LaggedRainfallGrowth + InitialGDP + Democracy + Mountains + EthnicFrac +
+                       ReligiousFrac + country_code, data = rain)
 
 rstage <- resid(firststage) #saving residuals 
 
-tidy(lm (InternalConflict ~ LaggedGDPGrowth + InitialGDP +Democracy + Mountains +EthnicFrac + ReligiousFrac +
+regl <- tidy(lm (InternalConflict ~ LaggedGDPGrowth + InitialGDP +Democracy + Mountains +EthnicFrac + ReligiousFrac +
       country_name + rstage, data = rain))
+
+head(regl)
 
 ```
 
-Here we can see the coefficient is much lower than the previous 2SLS regression (from -2.8 to -0.045) but it is now significant at the alpha equals 0.05 level. Endogeneity is addressed in this calculation by using the first stage in the two stage regression, removing the chance of corelation with the error term. 
+###Correction: The coefficients are the same (-2.8) when we run this model. It is controlling for endogeneity since it controls for other things that rainfall cannot. 
 
 ## Question 2:
 
@@ -168,6 +170,8 @@ From looking at the observations (nobs) we can see that there are 9 more observa
 
 e) The results of the 2SLS suggest that watching the program and information levels are not corelated at the alpha equals 0.05 level. The results are less significant than part b. We can't be certain that we have defeated endogeneity but using assignment to group as an instrument helps to reduce the endogeneity issue in this experiment. We can see the difference in the number of groups who watched the program and those who did not as the result of the assignment, therefore it is a useful IV. 
 
+### Note: We obtain different numerical answers even though our processes are exactly the same (even when I replicate the code in the solutions). I am using a .dta file and the solutions use the .csv file, and I am unsure if that is causing the issue. 
+
 Question 4: 
 ```{r}
 inmates <- import ("inmates.dta")
@@ -177,7 +181,7 @@ A) OLS/Linear Model
 ```{r}
 reg_in <- tidy (lm(prison ~ educ + age + AfAm + factor(state) + factor(year), data = inmates))
 
-reg_in
+head(reg_in)
 
 ```
 
@@ -206,6 +210,8 @@ ivreg_in
 
 I am unable to carry out this 2SLS due to the error: cannot allocate vector of size 1.5 GB, even though I have sufficient space on my computer for R to run this. Therefore, I also cannot finish part e. 
 
+### Note: The code still does not run, but my code matches the solutions.
+
 Question 5: 
 ```{r}
 income <- read_csv ("democracy_income.csv") 
@@ -233,7 +239,7 @@ b)
 ```{r}
 regplm2 <- tidy(plm(democracy_fh ~ lag_gdp + year + CountryCode, data = pincome, model = "pooling"))
 
-regplm2
+head(regplm2)
 
 ```
 
@@ -241,7 +247,7 @@ Here we included country and year fixed effects, there still is a significant re
 
 c) Instrument test
 ```{r}
-test1 <- tidy(plm (lag_gdp ~ worldincome, data = pincome, model = "pooling"))
+test1 <- tidy(plm (log_gdp ~ worldincome + factor(year) + factor(CountryCode), data = pincome, model = "pooling"))
 
 test1
 
@@ -253,8 +259,9 @@ The instrument test shows that world income is a strong instrument for log gdp.
 
 d)
 ```{r}
-tidy (plm(democracy_fh ~ lag_gdp + year + CountryCode | lag(worldincome, k = 1) + year + CountryCode, data = pincome,
-          model = "pooling"))
+reg <- tidy (plm(democracy_fh ~ lag_gdp + year + CountryCode | lag(worldincome, k = 1) + year + CountryCode, data = pincome, model = "pooling"))
+
+head(reg)
 
 ```
 
