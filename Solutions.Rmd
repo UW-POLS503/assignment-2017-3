@@ -76,6 +76,8 @@ The coefficient is the same, but it is also statistically significant at the alp
 
 #Question 2
 
+Note: While I do get different numerical answers than the answer key, even when I replicate the code, my answers remain the same as the ones I got initially.  Perhaps this is the result of using the .dta file, but otherwise I am simply unsure what could be causing the difference.
+
 ###(a) Bivariate OLS
 ```{r}
 tv <- import("Data/news_study_MAB.dta")
@@ -111,9 +113,9 @@ The assignment variable should be random assigned.  It's useful as an instrument
 ###(d)
 ```{r}
 ireg_tv <- ivreg(InformationLevel ~ WatchProgram + PoliticalInterest + ReadNews + Education 
-      | TreatmentGroup + PoliticalInterest + ReadNews + Education, data = tv)
+      | . - WatchProgram + TreatmentGroup, data = tv)
 
-ireg_tv
+coeftest(ireg_tv)["WatchProgram",]
 
 summary(ireg_tv)
 
@@ -154,14 +156,14 @@ linearHypothesis(ftest, c("ca9", "ca10", "ca11"))
 
 Using the F test, we find that these are strong instruments for the given data.
 
-##(d)
+###(d)
 
 ```{r, error = TRUE}
 ivreg(prison ~ educ + age + AfAm + state + year 
            | ca9 + ca10 + ca11 + age + AfAm + state + year, 
            data = inmates)
 ```
-Unfortunately, it is not possible to currently run this regression due to a computer error which I have been unable to resolve.  While I should have the RAM available to run the regression, and I have allocated enough to R in order to do so, the ivreg simply will not work for the given size of the data set.  Likewise, this prevents me from answering part (e) of this question.
+Unfortunately, it is not possible to currently run this regression due to a computer error which I have been unable to resolve.  While I should have the RAM available to run the regression, and I have allocated enough to R in order to do so, the ivreg simply will not work for the given size of the data set.  Likewise, this prevents me from answering part (e) of this question.  I will note that the solution set has the same code that I do in this case.
 #Question 5
 ###(a)
 ```{r}
@@ -185,11 +187,15 @@ We find that the lag of gdp is highly significant in the pooled regression model
 head(tidy(plm(democracy_fh ~ lag_gdp + year + CountryCode, data = pdemin, model = "pooling")))
 ```
 We still find a statistically significant correlation between lag_gdp and democratization.  However, the significance of the results is heavily reduced, though it remains significant at the alpha equals 0.05 level.
+
 ###(c)
+
 ```{r}
-tidy(plm(log_gdp ~ worldincome, data = pdemin, model = "pooling"))
+tidy(plm(log_gdp ~ worldincome + factor(year) + factor(CountryCode), data = pdemin, model = "pooling"))
 ```
 The instrument must first satisfy the inclusion condition, which we determine above using a simple regression.  The instrument satisfies this condition, as world income is correlated with log gdp at the alpha equals 0.05 level.  The second condition is the exclusion restriction, which means that the dependent variable must not be correlated to the instrument, except through the independent variable.  However, we can only determine this theoretically, there is no statistical test which can be done in order to do so.
+
+###(d)
 
 ```{r}
 head(tidy(plm(democracy_fh ~ lag_gdp + year + CountryCode | lag(worldincome, k = 1) + year + CountryCode, data = pdemin, model = "pooling")))
